@@ -13,8 +13,10 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import VideoCallModal from '@/components/VideoCallModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
   Play, 
@@ -34,6 +36,7 @@ const StudyRoom = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: room, isLoading: roomLoading } = useRoom(roomId);
   const { data: members } = useRoomMembers(roomId);
@@ -52,9 +55,35 @@ const StudyRoom = () => {
   const [notesContent, setNotesContent] = useState('');
   const [chatMessage, setChatMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'notes' | 'chat' | 'participants'>('notes');
+  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const notesDebounceRef = useRef<NodeJS.Timeout>();
+
+  // Subscribe to realtime member updates
+  useEffect(() => {
+    if (!roomId) return;
+
+    const channel = supabase
+      .channel(`members-${roomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'room_members',
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['room-members', roomId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, queryClient]);
 
   // Sync local timer with server state
   useEffect(() => {
@@ -76,7 +105,6 @@ const StudyRoom = () => {
     const interval = setInterval(() => {
       setLocalTimeRemaining((prev) => {
         if (prev <= 1) {
-          // Timer completed
           handleTimerComplete();
           return 0;
         }
@@ -105,10 +133,17 @@ const StudyRoom = () => {
     const isBreak = timer?.is_break || false;
     
     if (!isBreak) {
-      // Completed a study session
+      // Completed a study session - update profile and log session
       await updateProfile.mutateAsync({
         pomodoro_count: (profile.pomodoro_count || 0) + 1,
         total_study_time: (profile.total_study_time || 0) + room.timer_duration,
+      });
+
+      // Log the study session
+      await supabase.from('study_sessions').insert({
+        user_id: user.id,
+        room_id: roomId,
+        duration: room.timer_duration,
       });
     }
 
@@ -294,9 +329,14 @@ const StudyRoom = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1" disabled>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1"
+              onClick={() => setIsVideoCallOpen(true)}
+            >
               <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Video (Coming Soon)</span>
+              <span className="hidden sm:inline">Video Call</span>
             </Button>
           </div>
         </div>
@@ -528,6 +568,18 @@ const StudyRoom = () => {
           </Card>
         </div>
       </div>
+
+      {/* Video Call Modal */}
+      <VideoCallModal
+        open={isVideoCallOpen}
+        onOpenChange={setIsVideoCallOpen}
+        roomName={room.name}
+        participants={members?.map(m => ({
+          id: m.id,
+          name: m.profile?.full_name || 'Anonymous',
+          avatar: m.profile?.avatar_url || undefined,
+        }))}
+      />
     </div>
   );
 };
