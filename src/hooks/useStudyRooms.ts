@@ -1,0 +1,239 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+export interface StudyRoom {
+  id: string;
+  name: string;
+  description: string | null;
+  room_code: string;
+  created_by: string;
+  is_active: boolean;
+  timer_duration: number;
+  break_duration: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RoomMember {
+  id: string;
+  room_id: string;
+  user_id: string;
+  status: 'studying' | 'break' | 'idle';
+  joined_at: string;
+  profile?: {
+    full_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export const useMyRooms = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['my-rooms', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      // Get rooms created by user
+      const { data: createdRooms, error: createdError } = await supabase
+        .from('study_rooms')
+        .select('*')
+        .eq('created_by', user.id);
+
+      if (createdError) throw createdError;
+
+      // Get rooms user has joined
+      const { data: memberships, error: memberError } = await supabase
+        .from('room_members')
+        .select('room_id')
+        .eq('user_id', user.id);
+
+      if (memberError) throw memberError;
+
+      const joinedRoomIds = memberships?.map(m => m.room_id) || [];
+      
+      if (joinedRoomIds.length === 0) {
+        return createdRooms as StudyRoom[];
+      }
+
+      const { data: joinedRooms, error: joinedError } = await supabase
+        .from('study_rooms')
+        .select('*')
+        .in('id', joinedRoomIds)
+        .neq('created_by', user.id);
+
+      if (joinedError) throw joinedError;
+
+      return [...(createdRooms || []), ...(joinedRooms || [])] as StudyRoom[];
+    },
+    enabled: !!user,
+  });
+};
+
+export const useRoom = (roomId: string | undefined) => {
+  return useQuery({
+    queryKey: ['room', roomId],
+    queryFn: async () => {
+      if (!roomId) return null;
+
+      const { data, error } = await supabase
+        .from('study_rooms')
+        .select('*')
+        .eq('id', roomId)
+        .single();
+
+      if (error) throw error;
+      return data as StudyRoom;
+    },
+    enabled: !!roomId,
+  });
+};
+
+export const useRoomByCode = () => {
+  return useMutation({
+    mutationFn: async (roomCode: string) => {
+      const { data, error } = await supabase
+        .from('study_rooms')
+        .select('*')
+        .eq('room_code', roomCode.toUpperCase())
+        .single();
+
+      if (error) throw error;
+      return data as StudyRoom;
+    },
+  });
+};
+
+export const useCreateRoom = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ name, description }: { name: string; description?: string }) => {
+      if (!user) throw new Error('No user');
+
+      // Generate a room code
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let roomCode = '';
+      for (let i = 0; i < 6; i++) {
+        roomCode += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      const { data: room, error: roomError } = await supabase
+        .from('study_rooms')
+        .insert({
+          name,
+          description,
+          room_code: roomCode,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      // Add creator as member
+      await supabase
+        .from('room_members')
+        .insert({
+          room_id: room.id,
+          user_id: user.id,
+          status: 'idle',
+        });
+
+      // Create timer state
+      await supabase
+        .from('room_timer_state')
+        .insert({
+          room_id: room.id,
+          time_remaining: room.timer_duration * 60,
+        });
+
+      // Create notes
+      await supabase
+        .from('room_notes')
+        .insert({
+          room_id: room.id,
+          content: '',
+        });
+
+      return room as StudyRoom;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-rooms'] });
+    },
+  });
+};
+
+export const useJoinRoom = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (roomId: string) => {
+      if (!user) throw new Error('No user');
+
+      const { error } = await supabase
+        .from('room_members')
+        .insert({
+          room_id: roomId,
+          user_id: user.id,
+          status: 'idle',
+        });
+
+      if (error && error.code !== '23505') throw error; // Ignore duplicate key error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-members'] });
+    },
+  });
+};
+
+export const useRoomMembers = (roomId: string | undefined) => {
+  return useQuery({
+    queryKey: ['room-members', roomId],
+    queryFn: async () => {
+      if (!roomId) return [];
+
+      const { data, error } = await supabase
+        .from('room_members')
+        .select(`
+          *,
+          profile:profiles!room_members_user_id_fkey(full_name, avatar_url)
+        `)
+        .eq('room_id', roomId);
+
+      if (error) throw error;
+      
+      return data.map(member => ({
+        ...member,
+        profile: Array.isArray(member.profile) ? member.profile[0] : member.profile,
+      })) as RoomMember[];
+    },
+    enabled: !!roomId,
+  });
+};
+
+export const useUpdateMemberStatus = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ roomId, status }: { roomId: string; status: 'studying' | 'break' | 'idle' }) => {
+      if (!user) throw new Error('No user');
+
+      const { error } = await supabase
+        .from('room_members')
+        .update({ status })
+        .eq('room_id', roomId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['room-members', variables.roomId] });
+    },
+  });
+};
