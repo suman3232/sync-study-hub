@@ -25,6 +25,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -346,15 +347,23 @@ const Dashboard = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Timer className="h-4 w-4" />
-                        <span>{room.timer_duration}min</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Timer className="h-4 w-4" />
+                          <span>{room.timer_duration}min</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Sparkles className="h-4 w-4" />
+                          <span>{room.break_duration}min break</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Sparkles className="h-4 w-4" />
-                        <span>{room.break_duration}min break</span>
-                      </div>
+                      {room.member_count !== undefined && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Users className="h-3 w-3" />
+                          {room.member_count}
+                        </Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

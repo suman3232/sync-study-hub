@@ -13,6 +13,7 @@ export interface StudyRoom {
   break_duration: number;
   created_at: string;
   updated_at: string;
+  member_count?: number;
 }
 
 export interface RoomMember {
@@ -35,15 +36,7 @@ export const useMyRooms = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      // Get rooms created by user
-      const { data: createdRooms, error: createdError } = await supabase
-        .from('study_rooms')
-        .select('*')
-        .eq('created_by', user.id);
-
-      if (createdError) throw createdError;
-
-      // Get rooms user has joined
+      // Get rooms user is a member of
       const { data: memberships, error: memberError } = await supabase
         .from('room_members')
         .select('room_id')
@@ -51,21 +44,36 @@ export const useMyRooms = () => {
 
       if (memberError) throw memberError;
 
-      const joinedRoomIds = memberships?.map(m => m.room_id) || [];
+      const roomIds = memberships?.map(m => m.room_id) || [];
       
-      if (joinedRoomIds.length === 0) {
-        return createdRooms as StudyRoom[];
+      if (roomIds.length === 0) {
+        return [];
       }
 
-      const { data: joinedRooms, error: joinedError } = await supabase
+      // Get room details with member count
+      const { data: rooms, error: roomsError } = await supabase
         .from('study_rooms')
         .select('*')
-        .in('id', joinedRoomIds)
-        .neq('created_by', user.id);
+        .in('id', roomIds);
 
-      if (joinedError) throw joinedError;
+      if (roomsError) throw roomsError;
 
-      return [...(createdRooms || []), ...(joinedRooms || [])] as StudyRoom[];
+      // Get member counts for each room
+      const roomsWithCounts = await Promise.all(
+        (rooms || []).map(async (room) => {
+          const { count } = await supabase
+            .from('room_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('room_id', room.id);
+          
+          return {
+            ...room,
+            member_count: count || 0,
+          };
+        })
+      );
+
+      return roomsWithCounts as StudyRoom[];
     },
     enabled: !!user,
   });
@@ -166,6 +174,34 @@ export const useCreateRoom = () => {
   });
 };
 
+export const useUpdateRoom = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      roomId, 
+      updates 
+    }: { 
+      roomId: string; 
+      updates: Partial<Pick<StudyRoom, 'name' | 'description' | 'timer_duration' | 'break_duration'>>; 
+    }) => {
+      const { data, error } = await supabase
+        .from('study_rooms')
+        .update(updates)
+        .eq('id', roomId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as StudyRoom;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['room', variables.roomId] });
+      queryClient.invalidateQueries({ queryKey: ['my-rooms'] });
+    },
+  });
+};
+
 export const useJoinRoom = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -183,6 +219,29 @@ export const useJoinRoom = () => {
         });
 
       if (error && error.code !== '23505') throw error; // Ignore duplicate key error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['room-members'] });
+    },
+  });
+};
+
+export const useLeaveRoom = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (roomId: string) => {
+      if (!user) throw new Error('No user');
+
+      const { error } = await supabase
+        .from('room_members')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-rooms'] });
