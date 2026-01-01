@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import StudyAnalytics from '@/components/StudyAnalytics';
 import { 
   BookOpen, 
   Plus, 
@@ -20,7 +21,8 @@ import {
   Trophy,
   Clock,
   LogOut,
-  Sparkles
+  Sparkles,
+  BarChart3
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -39,6 +41,7 @@ const Dashboard = () => {
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [joinCode, setJoinCode] = useState('');
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,6 +217,25 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Analytics Toggle */}
+        <div className="mb-6 animate-fade-in" style={{ animationDelay: '0.28s' }}>
+          <Button
+            variant={showAnalytics ? 'default' : 'outline'}
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className="gap-2"
+          >
+            <BarChart3 className="h-4 w-4" />
+            {showAnalytics ? 'Hide Analytics' : 'View Weekly Analytics'}
+          </Button>
+        </div>
+
+        {/* Analytics Section */}
+        {showAnalytics && (
+          <div className="mb-8 animate-fade-in">
+            <StudyAnalytics />
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex flex-wrap gap-4 mb-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
