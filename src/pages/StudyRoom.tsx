@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRoom, useRoomMembers, useUpdateMemberStatus } from '@/hooks/useStudyRooms';
+import { useRoom, useRoomMembers, useUpdateMemberStatus, useLeaveRoom, useUpdateRoom } from '@/hooks/useStudyRooms';
 import { useRoomTimer, useUpdateTimer } from '@/hooks/useRoomTimer';
 import { useRoomNotes, useUpdateNotes } from '@/hooks/useRoomNotes';
 import { useRoomChat, useSendMessage } from '@/hooks/useRoomChat';
-import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
+import { useCompletePomodoro } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,8 +15,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import VideoCallModal from '@/components/VideoCallModal';
+import RoomSettingsModal from '@/components/RoomSettingsModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { playTimerSound, showNotification, requestNotificationPermission } from '@/utils/notifications';
 import { 
   ArrowLeft, 
   Play, 
@@ -28,8 +30,18 @@ import {
   MessageSquare,
   Video,
   Copy,
-  Coffee
+  Coffee,
+  Settings,
+  LogOut,
+  MoreVertical
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const StudyRoom = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -43,22 +55,32 @@ const StudyRoom = () => {
   const { data: timer } = useRoomTimer(roomId);
   const { data: notes } = useRoomNotes(roomId);
   const { data: messages } = useRoomChat(roomId);
-  const { data: profile } = useProfile();
 
   const updateTimer = useUpdateTimer();
   const updateNotes = useUpdateNotes();
   const sendMessage = useSendMessage();
   const updateStatus = useUpdateMemberStatus();
-  const updateProfile = useUpdateProfile();
+  const completePomodoro = useCompletePomodoro();
+  const leaveRoom = useLeaveRoom();
+  const updateRoom = useUpdateRoom();
 
   const [localTimeRemaining, setLocalTimeRemaining] = useState(1500);
   const [notesContent, setNotesContent] = useState('');
   const [chatMessage, setChatMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'notes' | 'chat' | 'participants'>('notes');
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const notesDebounceRef = useRef<NodeJS.Timeout>();
+  const timerCompletedRef = useRef(false);
+
+  const isCreator = room?.created_by === user?.id;
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   // Subscribe to realtime member updates
   useEffect(() => {
@@ -95,6 +117,7 @@ const StudyRoom = () => {
       } else {
         setLocalTimeRemaining(timer.time_remaining);
       }
+      timerCompletedRef.current = false;
     }
   }, [timer]);
 
@@ -104,11 +127,12 @@ const StudyRoom = () => {
 
     const interval = setInterval(() => {
       setLocalTimeRemaining((prev) => {
-        if (prev <= 1) {
+        if (prev <= 1 && !timerCompletedRef.current) {
+          timerCompletedRef.current = true;
           handleTimerComplete();
           return 0;
         }
-        return prev - 1;
+        return Math.max(0, prev - 1);
       });
     }, 1000);
 
@@ -128,22 +152,32 @@ const StudyRoom = () => {
   }, [messages]);
 
   const handleTimerComplete = async () => {
-    if (!roomId || !room || !user || !profile) return;
+    if (!roomId || !room || !user) return;
 
     const isBreak = timer?.is_break || false;
     
+    // Play sound and show notification
+    playTimerSound();
+    
     if (!isBreak) {
-      // Completed a study session - update profile and log session
-      await updateProfile.mutateAsync({
-        pomodoro_count: (profile.pomodoro_count || 0) + 1,
-        total_study_time: (profile.total_study_time || 0) + room.timer_duration,
+      // Completed a study session
+      await completePomodoro.mutateAsync({
+        roomId,
+        duration: room.timer_duration,
       });
 
-      // Log the study session
-      await supabase.from('study_sessions').insert({
-        user_id: user.id,
-        room_id: roomId,
-        duration: room.timer_duration,
+      showNotification('🎉 Pomodoro Complete!', 'Great work! Take a well-deserved break.');
+      
+      toast({
+        title: '🎉 Pomodoro complete!',
+        description: 'Take a well-deserved break.',
+      });
+    } else {
+      showNotification('⚡ Break Over!', 'Time to get back to studying!');
+      
+      toast({
+        title: '⚡ Break over!',
+        description: 'Time to focus!',
       });
     }
 
@@ -156,17 +190,12 @@ const StudyRoom = () => {
         time_remaining: isBreak ? room.timer_duration * 60 : room.break_duration * 60,
         started_at: null,
       },
-      action: isBreak ? 'Timer completed - back to study' : 'Pomodoro completed - break time!',
+      action: isBreak ? 'Break ended' : 'Pomodoro completed',
     });
 
     await updateStatus.mutateAsync({
       roomId,
-      status: isBreak ? 'studying' : 'break',
-    });
-
-    toast({
-      title: isBreak ? '⚡ Break over!' : '🎉 Pomodoro complete!',
-      description: isBreak ? 'Time to focus!' : 'Take a well-deserved break.',
+      status: 'idle',
     });
   };
 
@@ -263,6 +292,54 @@ const StudyRoom = () => {
     }
   };
 
+  const handleLeaveRoom = async () => {
+    if (!roomId) return;
+    
+    try {
+      await leaveRoom.mutateAsync(roomId);
+      toast({
+        title: 'Left room',
+        description: 'You have left the study room.',
+      });
+      navigate('/dashboard');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to leave room.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSaveSettings = async (settings: { timerDuration: number; breakDuration: number }) => {
+    if (!roomId) return;
+    
+    await updateRoom.mutateAsync({
+      roomId,
+      updates: {
+        timer_duration: settings.timerDuration,
+        break_duration: settings.breakDuration,
+      },
+    });
+
+    // Also update the timer state if not running
+    if (!timer?.is_running) {
+      await updateTimer.mutateAsync({
+        roomId,
+        updates: {
+          time_remaining: settings.timerDuration * 60,
+          is_break: false,
+        },
+        action: 'Settings updated',
+      });
+    }
+
+    toast({
+      title: 'Settings saved',
+      description: 'Room settings have been updated.',
+    });
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -336,8 +413,30 @@ const StudyRoom = () => {
               onClick={() => setIsVideoCallOpen(true)}
             >
               <Video className="h-4 w-4" />
-              <span className="hidden sm:inline">Video Call</span>
+              <span className="hidden sm:inline">Video</span>
             </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsSettingsOpen(true)}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Room Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleLeaveRoom}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Leave Room
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -579,6 +678,17 @@ const StudyRoom = () => {
           name: m.profile?.full_name || 'Anonymous',
           avatar: m.profile?.avatar_url || undefined,
         }))}
+      />
+
+      {/* Room Settings Modal */}
+      <RoomSettingsModal
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        roomName={room.name}
+        timerDuration={room.timer_duration}
+        breakDuration={room.break_duration}
+        isCreator={isCreator}
+        onSave={handleSaveSettings}
       />
     </div>
   );
