@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import StudyAnalytics from '@/components/StudyAnalytics';
+import ThemeToggle from '@/components/ThemeToggle';
 import { 
   BookOpen, 
   Plus, 
@@ -127,7 +128,8 @@ const Dashboard = () => {
             <span className="font-display font-bold text-xl">SyncStudy</span>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={() => navigate('/leaderboard')}>
               <Trophy className="h-5 w-5" />
             </Button>

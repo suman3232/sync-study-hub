@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRoom, useRoomMembers, useUpdateMemberStatus, useLeaveRoom, useUpdateRoom } from '@/hooks/useStudyRooms';
@@ -6,6 +6,7 @@ import { useRoomTimer, useUpdateTimer } from '@/hooks/useRoomTimer';
 import { useRoomNotes, useUpdateNotes } from '@/hooks/useRoomNotes';
 import { useRoomChat, useSendMessage } from '@/hooks/useRoomChat';
 import { useCompletePomodoro } from '@/hooks/useProfile';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,10 +15,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import VideoCallModal from '@/components/VideoCallModal';
 import RoomSettingsModal from '@/components/RoomSettingsModal';
 import ShareRoomModal from '@/components/ShareRoomModal';
 import FocusMusicPlayer from '@/components/FocusMusicPlayer';
+import ThemeToggle from '@/components/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { playTimerSound, showNotification, requestNotificationPermission } from '@/utils/notifications';
@@ -36,7 +39,8 @@ import {
   Settings,
   LogOut,
   MoreVertical,
-  Share2
+  Share2,
+  Keyboard
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -203,7 +207,7 @@ const StudyRoom = () => {
     });
   };
 
-  const handleStartTimer = async () => {
+  const handleStartTimer = useCallback(async () => {
     if (!roomId) return;
 
     await updateTimer.mutateAsync({
@@ -219,9 +223,9 @@ const StudyRoom = () => {
       roomId,
       status: timer?.is_break ? 'break' : 'studying',
     });
-  };
+  }, [roomId, timer?.is_break, updateTimer, updateStatus]);
 
-  const handlePauseTimer = async () => {
+  const handlePauseTimer = useCallback(async () => {
     if (!roomId) return;
 
     await updateTimer.mutateAsync({
@@ -238,9 +242,9 @@ const StudyRoom = () => {
       roomId,
       status: 'idle',
     });
-  };
+  }, [roomId, localTimeRemaining, updateTimer, updateStatus]);
 
-  const handleResetTimer = async () => {
+  const handleResetTimer = useCallback(async () => {
     if (!roomId || !room) return;
 
     await updateTimer.mutateAsync({
@@ -258,7 +262,21 @@ const StudyRoom = () => {
       roomId,
       status: 'idle',
     });
-  };
+  }, [roomId, room, updateTimer, updateStatus]);
+
+  // Keyboard shortcuts for timer controls
+  const handleStartPause = useCallback(() => {
+    if (timer?.is_running) {
+      handlePauseTimer();
+    } else {
+      handleStartTimer();
+    }
+  }, [timer?.is_running, handlePauseTimer, handleStartTimer]);
+
+  useKeyboardShortcuts({
+    onStartPause: handleStartPause,
+    onReset: handleResetTimer,
+  });
 
   const handleNotesChange = (content: string) => {
     setNotesContent(content);
@@ -410,6 +428,17 @@ const StudyRoom = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="hidden sm:flex">
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Space: Start/Pause • R: Reset</p>
+              </TooltipContent>
+            </Tooltip>
+            <ThemeToggle />
             <Button 
               variant="outline" 
               size="sm" 
