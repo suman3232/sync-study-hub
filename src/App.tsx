@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import StudyRoom from "./pages/StudyRoom";
+import JoinRoom from "./pages/JoinRoom";
 import Leaderboard from "./pages/Leaderboard";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -99,10 +100,11 @@ const AppRoutes = () => {
         path="/settings"
         element={
           <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
         }
       />
+      <Route path="/join/:code" element={<JoinRoom />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

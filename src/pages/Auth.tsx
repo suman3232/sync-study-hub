@@ -27,7 +27,14 @@ const Auth = () => {
 
   useEffect(() => {
     if (user && !loading) {
-      navigate('/dashboard');
+      // Check for pending room code from share links
+      const pendingRoomCode = sessionStorage.getItem('pendingRoomCode');
+      if (pendingRoomCode) {
+        sessionStorage.removeItem('pendingRoomCode');
+        navigate(`/join/${pendingRoomCode}`);
+      } else {
+        navigate('/dashboard');
+      }
     }
   }, [user, loading, navigate]);
 
