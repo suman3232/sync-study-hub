@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import AvatarUpload from '@/components/AvatarUpload';
 import { ArrowLeft, Save, LogOut, User } from 'lucide-react';
 
 const Settings = () => {
@@ -90,28 +90,13 @@ const Settings = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Avatar Preview */}
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={avatarUrl || undefined} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                    {fullName?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <Label htmlFor="avatar-url">Avatar URL</Label>
-                  <Input
-                    id="avatar-url"
-                    placeholder="https://example.com/avatar.jpg"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Paste a link to your profile picture
-                  </p>
-                </div>
-              </div>
+              {/* Avatar Upload */}
+              <AvatarUpload
+                currentAvatarUrl={avatarUrl}
+                fullName={fullName}
+                email={user?.email || null}
+                onUploadComplete={(url) => setAvatarUrl(url)}
+              />
 
               {/* Name */}
               <div className="space-y-2">

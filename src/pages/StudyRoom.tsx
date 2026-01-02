@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import VideoCallModal from '@/components/VideoCallModal';
 import RoomSettingsModal from '@/components/RoomSettingsModal';
+import ShareRoomModal from '@/components/ShareRoomModal';
+import FocusMusicPlayer from '@/components/FocusMusicPlayer';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { playTimerSound, showNotification, requestNotificationPermission } from '@/utils/notifications';
@@ -33,7 +35,8 @@ import {
   Coffee,
   Settings,
   LogOut,
-  MoreVertical
+  MoreVertical,
+  Share2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -70,6 +73,7 @@ const StudyRoom = () => {
   const [activeTab, setActiveTab] = useState<'notes' | 'chat' | 'participants'>('notes');
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const notesDebounceRef = useRef<NodeJS.Timeout>();
@@ -410,6 +414,15 @@ const StudyRoom = () => {
               variant="outline" 
               size="sm" 
               className="gap-1"
+              onClick={() => setIsShareOpen(true)}
+            >
+              <Share2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Share</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1"
               onClick={() => setIsVideoCallOpen(true)}
             >
               <Video className="h-4 w-4" />
@@ -690,6 +703,17 @@ const StudyRoom = () => {
         isCreator={isCreator}
         onSave={handleSaveSettings}
       />
+
+      {/* Share Room Modal */}
+      <ShareRoomModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        roomCode={room.room_code}
+        roomName={room.name}
+      />
+
+      {/* Focus Music Player */}
+      <FocusMusicPlayer />
     </div>
   );
 };
