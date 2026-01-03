@@ -21,11 +21,11 @@ const Leaderboard = () => {
   const getRankIcon = (index: number) => {
     switch (index) {
       case 0:
-        return <Trophy className="h-6 w-6 text-yellow-500" />;
+        return <Trophy className="h-6 w-6" style={{ color: 'hsl(var(--rank-gold))' }} />;
       case 1:
-        return <Medal className="h-6 w-6 text-gray-400" />;
+        return <Medal className="h-6 w-6" style={{ color: 'hsl(var(--rank-silver))' }} />;
       case 2:
-        return <Award className="h-6 w-6 text-amber-600" />;
+        return <Award className="h-6 w-6" style={{ color: 'hsl(var(--rank-bronze))' }} />;
       default:
         return (
           <span className="w-6 h-6 flex items-center justify-center text-sm font-bold text-muted-foreground">
@@ -38,11 +38,11 @@ const Leaderboard = () => {
   const getRankBackground = (index: number) => {
     switch (index) {
       case 0:
-        return 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200';
+        return 'bg-[hsl(var(--rank-gold-bg))] border-[hsl(var(--rank-gold)/0.3)]';
       case 1:
-        return 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200';
+        return 'bg-[hsl(var(--rank-silver-bg))] border-[hsl(var(--rank-silver)/0.3)]';
       case 2:
-        return 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200';
+        return 'bg-[hsl(var(--rank-bronze-bg))] border-[hsl(var(--rank-bronze)/0.3)]';
       default:
         return '';
     }

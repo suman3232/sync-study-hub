@@ -65,6 +65,14 @@
     --timer-break: 142 76% 36%;
     --timer-inactive: 220 9% 46%;
     
+    /* Leaderboard rank colors */
+    --rank-gold: 45 93% 47%;
+    --rank-gold-bg: 48 96% 95%;
+    --rank-silver: 220 9% 46%;
+    --rank-silver-bg: 220 14% 96%;
+    --rank-bronze: 25 75% 47%;
+    --rank-bronze-bg: 30 80% 95%;
+    
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(234, 89%, 63%) 0%, hsl(250, 87%, 55%) 100%);
     --gradient-success: linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(152, 80%, 40%) 100%);
@@ -118,6 +126,14 @@
     --sidebar-accent-foreground: 210 20% 98%;
     --sidebar-border: 215 28% 17%;
     --sidebar-ring: 234 89% 67%;
+
+    /* Leaderboard rank colors - dark mode */
+    --rank-gold: 45 93% 55%;
+    --rank-gold-bg: 45 50% 15%;
+    --rank-silver: 220 9% 60%;
+    --rank-silver-bg: 220 20% 18%;
+    --rank-bronze: 25 75% 55%;
+    --rank-bronze-bg: 25 40% 15%;
 
     --shadow-glow: 0 0 20px rgba(129, 140, 248, 0.4);
   }
