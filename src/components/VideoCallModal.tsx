@@ -1,31 +1,107 @@
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Users, Construction } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Users, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useVideoCall } from '@/hooks/useVideoCall';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 interface VideoCallModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  roomId: string;
   roomName: string;
-  participants?: Array<{
-    id: string;
-    name: string;
-    avatar?: string;
-  }>;
 }
 
-const VideoCallModal = ({ open, onOpenChange, roomName, participants = [] }: VideoCallModalProps) => {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+const VideoTile = ({ 
+  stream, 
+  name, 
+  isMuted, 
+  isVideoOff,
+  isLocal = false 
+}: { 
+  stream: MediaStream | null; 
+  name: string; 
+  isMuted: boolean;
+  isVideoOff: boolean;
+  isLocal?: boolean;
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Placeholder participants for demo
-  const demoParticipants = participants.length > 0 ? participants : [
-    { id: '1', name: 'You', avatar: undefined },
-  ];
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <div className={cn(
+      "relative rounded-lg overflow-hidden bg-muted aspect-video",
+      isLocal && "border-2 border-primary"
+    )}>
+      {stream && !isVideoOff ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isLocal}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-muted">
+          <Avatar className="h-16 w-16">
+            <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+              {name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+      )}
+      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+        <span className="text-xs bg-background/80 px-2 py-1 rounded text-foreground">
+          {isLocal ? 'You' : name}
+        </span>
+        <div className="flex gap-1">
+          {isMuted && (
+            <div className="bg-destructive/80 p-1 rounded">
+              <MicOff className="h-3 w-3 text-white" />
+            </div>
+          )}
+          {isVideoOff && (
+            <div className="bg-destructive/80 p-1 rounded">
+              <VideoOff className="h-3 w-3 text-white" />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const VideoCallModal = ({ open, onOpenChange, roomId, roomName }: VideoCallModalProps) => {
+  const {
+    isConnected,
+    isConnecting,
+    localStream,
+    participants,
+    isMuted,
+    isVideoOff,
+    error,
+    startCall,
+    endCall,
+    toggleMute,
+    toggleVideo,
+  } = useVideoCall(roomId);
+
+  const handleClose = () => {
+    endCall();
+    onOpenChange(false);
+  };
+
+  const participantCount = participants.size + (localStream ? 1 : 0);
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -33,86 +109,102 @@ const VideoCallModal = ({ open, onOpenChange, roomName, participants = [] }: Vid
             Video Call - {roomName}
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2">
-            <Construction className="h-4 w-4 text-accent" />
-            <span className="text-accent font-medium">Feature Under Development</span>
+            <Users className="h-4 w-4" />
+            {participantCount} participant{participantCount !== 1 ? 's' : ''}
           </DialogDescription>
         </DialogHeader>
 
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Video Grid */}
-        <div className="flex-1 bg-muted/50 rounded-lg p-4 relative">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
+        <div className="flex-1 bg-muted/30 rounded-lg p-4 overflow-auto">
+          {!isConnected && !isConnecting ? (
+            <div className="h-full flex flex-col items-center justify-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                 <Video className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Video Calling Coming Soon</h3>
-              <p className="text-muted-foreground max-w-sm">
-                We're working on bringing you real-time video calls so you can study face-to-face with your group.
+              <h3 className="font-semibold text-lg">Ready to join video call?</h3>
+              <p className="text-muted-foreground text-center max-w-sm">
+                Click the button below to join the video call with your study partners.
               </p>
+              <Button onClick={startCall} size="lg" className="gap-2">
+                <Phone className="h-5 w-5" />
+                Join Call
+              </Button>
             </div>
-          </div>
-
-          {/* Participant tiles (placeholder layout) */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 opacity-30">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div 
-                key={i} 
-                className="aspect-video bg-muted rounded-lg flex items-center justify-center"
-              >
-                <Avatar className="h-16 w-16">
-                  <AvatarFallback className="bg-secondary text-lg">
-                    ?
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            ))}
-          </div>
+          ) : isConnecting ? (
+            <div className="h-full flex flex-col items-center justify-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-muted-foreground">Connecting to video call...</p>
+            </div>
+          ) : (
+            <div className={cn(
+              "grid gap-4 h-full",
+              participantCount === 1 && "grid-cols-1",
+              participantCount === 2 && "grid-cols-2",
+              participantCount >= 3 && participantCount <= 4 && "grid-cols-2 grid-rows-2",
+              participantCount >= 5 && "grid-cols-3"
+            )}>
+              {/* Local video */}
+              {localStream && (
+                <VideoTile
+                  stream={localStream}
+                  name="You"
+                  isMuted={isMuted}
+                  isVideoOff={isVideoOff}
+                  isLocal
+                />
+              )}
+              
+              {/* Remote participants */}
+              {Array.from(participants.values()).map((participant) => (
+                <VideoTile
+                  key={participant.id}
+                  stream={participant.stream || null}
+                  name={participant.name}
+                  isMuted={participant.isMuted}
+                  isVideoOff={participant.isVideoOff}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-center gap-4 py-4">
-          <Button
-            variant={isMuted ? 'destructive' : 'secondary'}
-            size="icon"
-            className="h-12 w-12 rounded-full"
-            onClick={() => setIsMuted(!isMuted)}
-            disabled
-          >
-            {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </Button>
+        {isConnected && (
+          <div className="flex items-center justify-center gap-4 py-4">
+            <Button
+              variant={isMuted ? 'destructive' : 'secondary'}
+              size="icon"
+              className="h-12 w-12 rounded-full"
+              onClick={toggleMute}
+            >
+              {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            </Button>
 
-          <Button
-            variant={isVideoOff ? 'destructive' : 'secondary'}
-            size="icon"
-            className="h-12 w-12 rounded-full"
-            onClick={() => setIsVideoOff(!isVideoOff)}
-            disabled
-          >
-            {isVideoOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
-          </Button>
+            <Button
+              variant={isVideoOff ? 'destructive' : 'secondary'}
+              size="icon"
+              className="h-12 w-12 rounded-full"
+              onClick={toggleVideo}
+            >
+              {isVideoOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
+            </Button>
 
-          <Button
-            variant="destructive"
-            size="icon"
-            className="h-12 w-12 rounded-full"
-            onClick={() => onOpenChange(false)}
-          >
-            <PhoneOff className="h-5 w-5" />
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="icon"
-            className="h-12 w-12 rounded-full"
-            disabled
-          >
-            <Users className="h-5 w-5" />
-          </Button>
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground">
-          Video calls will be available in a future update. Stay tuned!
-        </p>
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-12 w-12 rounded-full"
+              onClick={handleClose}
+            >
+              <PhoneOff className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

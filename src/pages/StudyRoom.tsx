@@ -714,12 +714,8 @@ const StudyRoom = () => {
       <VideoCallModal
         open={isVideoCallOpen}
         onOpenChange={setIsVideoCallOpen}
+        roomId={roomId || ''}
         roomName={room.name}
-        participants={members?.map(m => ({
-          id: m.id,
-          name: m.profile?.full_name || 'Anonymous',
-          avatar: m.profile?.avatar_url || undefined,
-        }))}
       />
 
       {/* Room Settings Modal */}

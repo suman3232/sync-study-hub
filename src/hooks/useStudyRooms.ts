@@ -9,6 +9,7 @@ export interface StudyRoom {
   room_code: string;
   created_by: string;
   is_active: boolean;
+  is_private: boolean;
   timer_duration: number;
   break_duration: number;
   created_at: string;
@@ -118,7 +119,7 @@ export const useCreateRoom = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ name, description }: { name: string; description?: string }) => {
+    mutationFn: async ({ name, description, isPrivate }: { name: string; description?: string; isPrivate?: boolean }) => {
       if (!user) throw new Error('No user');
 
       // Generate a room code
@@ -135,6 +136,7 @@ export const useCreateRoom = () => {
           description,
           room_code: roomCode,
           created_by: user.id,
+          is_private: isPrivate ?? false,
         })
         .select()
         .single();

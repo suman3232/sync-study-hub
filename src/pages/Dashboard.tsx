@@ -23,8 +23,11 @@ import {
   Clock,
   LogOut,
   Sparkles,
-  BarChart3
+  BarChart3,
+  Lock,
+  Globe
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
@@ -42,6 +45,7 @@ const Dashboard = () => {
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
+  const [isPrivateRoom, setIsPrivateRoom] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [showAnalytics, setShowAnalytics] = useState(false);
 
@@ -53,16 +57,18 @@ const Dashboard = () => {
       const room = await createRoom.mutateAsync({
         name: newRoomName,
         description: newRoomDescription || undefined,
+        isPrivate: isPrivateRoom,
       });
       
       toast({
         title: 'Room Created!',
-        description: `Your room code is: ${room.room_code}`,
+        description: `Your ${isPrivateRoom ? 'private' : 'public'} room code is: ${room.room_code}`,
       });
       
       setIsCreateDialogOpen(false);
       setNewRoomName('');
       setNewRoomDescription('');
+      setIsPrivateRoom(false);
       navigate(`/room/${room.id}`);
     } catch (error) {
       toast({
@@ -276,6 +282,30 @@ const Dashboard = () => {
                     onChange={(e) => setNewRoomDescription(e.target.value)}
                   />
                 </div>
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    {isPrivateRoom ? (
+                      <Lock className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Globe className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <p className="font-medium text-sm">
+                        {isPrivateRoom ? 'Private Room' : 'Public Room'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {isPrivateRoom 
+                          ? 'Only people with the code can join' 
+                          : 'Anyone can discover and join'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={isPrivateRoom}
+                    onCheckedChange={setIsPrivateRoom}
+                  />
+                </div>
                 <Button type="submit" className="w-full" disabled={createRoom.isPending}>
                   {createRoom.isPending ? 'Creating...' : 'Create Room'}
                 </Button>
@@ -337,8 +367,13 @@ const Dashboard = () => {
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{room.name}</CardTitle>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg">{room.name}</CardTitle>
+                          {room.is_private && (
+                            <Lock className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
                         <CardDescription className="mt-1">
                           {room.description || 'No description'}
                         </CardDescription>
