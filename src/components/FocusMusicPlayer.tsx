@@ -21,31 +21,31 @@ interface Track {
   url: string;
 }
 
-// Free ambient sounds from public sources
+// Free ambient sounds from reliable CORS-friendly sources
 const tracks: Track[] = [
   {
     id: 'rain',
     name: 'Rain Sounds',
     category: 'Nature',
-    url: 'https://cdn.pixabay.com/audio/2022/05/13/audio_0108e60730.mp3',
+    url: 'https://freesound.org/data/previews/346/346642_5121236-lq.mp3',
   },
   {
-    id: 'forest',
-    name: 'Forest Ambience',
+    id: 'ocean',
+    name: 'Ocean Waves',
     category: 'Nature',
-    url: 'https://cdn.pixabay.com/audio/2022/02/22/audio_44b79e1d6c.mp3',
+    url: 'https://freesound.org/data/previews/527/527409_2193266-lq.mp3',
   },
   {
-    id: 'lofi',
-    name: 'Lo-Fi Beats',
-    category: 'Music',
-    url: 'https://cdn.pixabay.com/audio/2022/11/22/audio_a09b3a3952.mp3',
+    id: 'birds',
+    name: 'Forest Birds',
+    category: 'Nature',
+    url: 'https://freesound.org/data/previews/531/531947_5828667-lq.mp3',
   },
   {
-    id: 'cafe',
-    name: 'Coffee Shop',
+    id: 'fire',
+    name: 'Crackling Fire',
     category: 'Ambience',
-    url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_d8e1c8e3f8.mp3',
+    url: 'https://freesound.org/data/previews/185/185846_3411970-lq.mp3',
   },
 ];
 
@@ -55,14 +55,33 @@ const FocusMusicPlayer = () => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentTrack = tracks[currentTrackIndex];
 
+  const initAudio = (url: string) => {
+    const audio = new Audio();
+    audio.loop = true;
+    audio.volume = volume / 100;
+    audio.crossOrigin = 'anonymous';
+    audio.src = url;
+    
+    audio.onerror = () => {
+      console.warn('Audio failed to load:', url);
+      setHasError(true);
+      setIsPlaying(false);
+    };
+    
+    audio.oncanplaythrough = () => {
+      setHasError(false);
+    };
+    
+    return audio;
+  };
+
   useEffect(() => {
-    audioRef.current = new Audio(currentTrack.url);
-    audioRef.current.loop = true;
-    audioRef.current.volume = volume / 100;
+    audioRef.current = initAudio(currentTrack.url);
 
     return () => {
       if (audioRef.current) {
@@ -83,10 +102,16 @@ const FocusMusicPlayer = () => {
 
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(console.error);
+      setHasError(false);
+      audioRef.current.play().catch((err) => {
+        console.error('Playback failed:', err);
+        setHasError(true);
+        setIsPlaying(false);
+      });
+      setIsPlaying(true);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const nextTrack = () => {
@@ -97,13 +122,16 @@ const FocusMusicPlayer = () => {
 
     const nextIndex = (currentTrackIndex + 1) % tracks.length;
     setCurrentTrackIndex(nextIndex);
+    setHasError(false);
 
-    audioRef.current = new Audio(tracks[nextIndex].url);
-    audioRef.current.loop = true;
-    audioRef.current.volume = isMuted ? 0 : volume / 100;
+    audioRef.current = initAudio(tracks[nextIndex].url);
 
     if (wasPlaying) {
-      audioRef.current.play().catch(console.error);
+      audioRef.current.play().catch((err) => {
+        console.error('Playback failed:', err);
+        setHasError(true);
+        setIsPlaying(false);
+      });
     } else {
       setIsPlaying(false);
     }
@@ -116,12 +144,15 @@ const FocusMusicPlayer = () => {
     }
 
     setCurrentTrackIndex(index);
-    audioRef.current = new Audio(tracks[index].url);
-    audioRef.current.loop = true;
-    audioRef.current.volume = isMuted ? 0 : volume / 100;
+    setHasError(false);
+    audioRef.current = initAudio(tracks[index].url);
 
     if (wasPlaying) {
-      audioRef.current.play().catch(console.error);
+      audioRef.current.play().catch((err) => {
+        console.error('Playback failed:', err);
+        setHasError(true);
+        setIsPlaying(false);
+      });
     }
   };
 
