@@ -207,6 +207,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_private: boolean
           name: string
           room_code: string
           timer_duration: number | null
@@ -219,6 +220,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_private?: boolean
           name: string
           room_code: string
           timer_duration?: number | null
@@ -231,6 +233,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_private?: boolean
           name?: string
           room_code?: string
           timer_duration?: number | null
