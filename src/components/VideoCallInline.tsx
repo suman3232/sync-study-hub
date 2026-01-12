@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, MonitorUp, Users, Loader2, Maximize2 } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, MonitorUp, Loader2, Maximize2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useVideoCall } from '@/hooks/useVideoCall';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -40,7 +40,7 @@ const VideoTile = ({
     <div className={cn(
       "relative rounded-lg overflow-hidden bg-muted aspect-video",
       isLocal && !isScreenShare && "border-2 border-primary",
-      isScreenShare && "col-span-2 row-span-2"
+      isScreenShare && "col-span-full border-2 border-green-500"
     )}>
       {stream && !isVideoOff ? (
         <video
@@ -157,15 +157,15 @@ const VideoCallInline = ({ roomId, roomName, onExpand }: VideoCallInlineProps) =
       )}
 
       {/* Video Grid */}
-      <CardContent className="flex-1 p-2 overflow-hidden">
+      <CardContent className="flex-1 p-2 overflow-auto">
         <div className={cn(
-          "grid gap-2 h-full",
-          participantCount === 1 && "grid-cols-1",
-          participantCount === 2 && "grid-cols-2",
-          participantCount >= 3 && "grid-cols-2 grid-rows-2",
-          isScreenSharing && "grid-cols-3"
+          "grid gap-2",
+          participantCount === 1 && !isScreenSharing && "grid-cols-1",
+          participantCount === 2 && !isScreenSharing && "grid-cols-2",
+          participantCount >= 3 && !isScreenSharing && "grid-cols-2",
+          isScreenSharing && "grid-cols-1"
         )}>
-          {/* Screen share */}
+          {/* Screen share - show prominently */}
           {screenStream && (
             <VideoTile
               stream={screenStream}
@@ -176,6 +176,20 @@ const VideoCallInline = ({ roomId, roomName, onExpand }: VideoCallInlineProps) =
               isScreenShare
             />
           )}
+
+          {/* Participant screen shares */}
+          {Array.from(participants.values())
+            .filter(p => p.isScreenSharing && p.screenStream)
+            .map((participant) => (
+              <VideoTile
+                key={`${participant.id}-screen`}
+                stream={participant.screenStream || null}
+                name={participant.name}
+                isMuted={false}
+                isVideoOff={false}
+                isScreenShare
+              />
+            ))}
 
           {/* Local video */}
           {localStream && (
@@ -208,6 +222,7 @@ const VideoCallInline = ({ roomId, roomName, onExpand }: VideoCallInlineProps) =
           size="icon"
           className="h-9 w-9 rounded-full"
           onClick={toggleMute}
+          title={isMuted ? 'Unmute' : 'Mute'}
         >
           {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
         </Button>
@@ -217,6 +232,7 @@ const VideoCallInline = ({ roomId, roomName, onExpand }: VideoCallInlineProps) =
           size="icon"
           className="h-9 w-9 rounded-full"
           onClick={toggleVideo}
+          title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
         >
           {isVideoOff ? <VideoOff className="h-4 w-4" /> : <Video className="h-4 w-4" />}
         </Button>
@@ -226,6 +242,7 @@ const VideoCallInline = ({ roomId, roomName, onExpand }: VideoCallInlineProps) =
           size="icon"
           className="h-9 w-9 rounded-full"
           onClick={toggleScreenShare}
+          title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
         >
           <MonitorUp className="h-4 w-4" />
         </Button>
@@ -235,6 +252,7 @@ const VideoCallInline = ({ roomId, roomName, onExpand }: VideoCallInlineProps) =
           size="icon"
           className="h-9 w-9 rounded-full"
           onClick={endCall}
+          title="Leave call"
         >
           <PhoneOff className="h-4 w-4" />
         </Button>

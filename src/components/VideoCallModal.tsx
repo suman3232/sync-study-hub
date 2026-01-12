@@ -156,7 +156,7 @@ const VideoCallModal = ({ open, onOpenChange, roomId, roomName }: VideoCallModal
               participantCount >= 5 && !isScreenSharing && "grid-cols-3",
               isScreenSharing && "grid-cols-3"
             )}>
-              {/* Screen share */}
+              {/* Screen share - your screen */}
               {screenStream && (
                 <VideoTile
                   stream={screenStream}
@@ -167,6 +167,20 @@ const VideoCallModal = ({ open, onOpenChange, roomId, roomName }: VideoCallModal
                   isScreenShare
                 />
               )}
+
+              {/* Participant screen shares */}
+              {Array.from(participants.values())
+                .filter(p => p.isScreenSharing && p.screenStream)
+                .map((participant) => (
+                  <VideoTile
+                    key={`${participant.id}-screen`}
+                    stream={participant.screenStream || null}
+                    name={participant.name}
+                    isMuted={false}
+                    isVideoOff={false}
+                    isScreenShare
+                  />
+                ))}
 
               {/* Local video */}
               {localStream && (
