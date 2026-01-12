@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Users, Loader2 } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, MonitorUp, Users, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useVideoCall } from '@/hooks/useVideoCall';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -19,13 +19,15 @@ const VideoTile = ({
   name, 
   isMuted, 
   isVideoOff,
-  isLocal = false 
+  isLocal = false,
+  isScreenShare = false
 }: { 
   stream: MediaStream | null; 
   name: string; 
   isMuted: boolean;
   isVideoOff: boolean;
   isLocal?: boolean;
+  isScreenShare?: boolean;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -38,7 +40,8 @@ const VideoTile = ({
   return (
     <div className={cn(
       "relative rounded-lg overflow-hidden bg-muted aspect-video",
-      isLocal && "border-2 border-primary"
+      isLocal && !isScreenShare && "border-2 border-primary",
+      isScreenShare && "col-span-2 row-span-2"
     )}>
       {stream && !isVideoOff ? (
         <video
@@ -59,15 +62,15 @@ const VideoTile = ({
       )}
       <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
         <span className="text-xs bg-background/80 px-2 py-1 rounded text-foreground">
-          {isLocal ? 'You' : name}
+          {isLocal ? 'You' : name}{isScreenShare ? ' (Screen)' : ''}
         </span>
         <div className="flex gap-1">
-          {isMuted && (
+          {isMuted && !isScreenShare && (
             <div className="bg-destructive/80 p-1 rounded">
               <MicOff className="h-3 w-3 text-white" />
             </div>
           )}
-          {isVideoOff && (
+          {isVideoOff && !isScreenShare && (
             <div className="bg-destructive/80 p-1 rounded">
               <VideoOff className="h-3 w-3 text-white" />
             </div>
@@ -83,14 +86,17 @@ const VideoCallModal = ({ open, onOpenChange, roomId, roomName }: VideoCallModal
     isConnected,
     isConnecting,
     localStream,
+    screenStream,
     participants,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     error,
     startCall,
     endCall,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
   } = useVideoCall(roomId);
 
   const handleClose = () => {
@@ -144,11 +150,24 @@ const VideoCallModal = ({ open, onOpenChange, roomId, roomName }: VideoCallModal
           ) : (
             <div className={cn(
               "grid gap-4 h-full",
-              participantCount === 1 && "grid-cols-1",
-              participantCount === 2 && "grid-cols-2",
-              participantCount >= 3 && participantCount <= 4 && "grid-cols-2 grid-rows-2",
-              participantCount >= 5 && "grid-cols-3"
+              participantCount === 1 && !isScreenSharing && "grid-cols-1",
+              participantCount === 2 && !isScreenSharing && "grid-cols-2",
+              participantCount >= 3 && participantCount <= 4 && !isScreenSharing && "grid-cols-2 grid-rows-2",
+              participantCount >= 5 && !isScreenSharing && "grid-cols-3",
+              isScreenSharing && "grid-cols-3"
             )}>
+              {/* Screen share */}
+              {screenStream && (
+                <VideoTile
+                  stream={screenStream}
+                  name="You"
+                  isMuted={false}
+                  isVideoOff={false}
+                  isLocal
+                  isScreenShare
+                />
+              )}
+
               {/* Local video */}
               {localStream && (
                 <VideoTile
@@ -193,6 +212,15 @@ const VideoCallModal = ({ open, onOpenChange, roomId, roomName }: VideoCallModal
               onClick={toggleVideo}
             >
               {isVideoOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
+            </Button>
+
+            <Button
+              variant={isScreenSharing ? 'default' : 'secondary'}
+              size="icon"
+              className="h-12 w-12 rounded-full"
+              onClick={toggleScreenShare}
+            >
+              <MonitorUp className="h-5 w-5" />
             </Button>
 
             <Button

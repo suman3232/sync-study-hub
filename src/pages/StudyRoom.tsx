@@ -17,9 +17,10 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import VideoCallModal from '@/components/VideoCallModal';
+import VideoCallInline from '@/components/VideoCallInline';
 import RoomSettingsModal from '@/components/RoomSettingsModal';
 import ShareRoomModal from '@/components/ShareRoomModal';
-import FocusMusicPlayer from '@/components/FocusMusicPlayer';
+import InlineFocusMusic from '@/components/InlineFocusMusic';
 import ThemeToggle from '@/components/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -74,7 +75,7 @@ const StudyRoom = () => {
   const [localTimeRemaining, setLocalTimeRemaining] = useState(1500);
   const [notesContent, setNotesContent] = useState('');
   const [chatMessage, setChatMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'notes' | 'chat' | 'participants'>('notes');
+  const [activeTab, setActiveTab] = useState<'notes' | 'chat' | 'participants' | 'video'>('notes');
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -563,6 +564,9 @@ const StudyRoom = () => {
               </Button>
             )}
           </div>
+
+          {/* Focus Music - Under Timer Controls */}
+          <InlineFocusMusic />
         </div>
 
         {/* Right Panel */}
@@ -598,6 +602,15 @@ const StudyRoom = () => {
               <Badge variant="secondary" className="ml-1">
                 {members?.length || 0}
               </Badge>
+            </Button>
+            <Button
+              variant={activeTab === 'video' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('video')}
+              className="gap-2"
+            >
+              <Video className="h-4 w-4" />
+              <span className="hidden sm:inline">Video</span>
             </Button>
           </div>
 
@@ -706,6 +719,14 @@ const StudyRoom = () => {
                 </CardContent>
               </>
             )}
+
+            {activeTab === 'video' && (
+              <VideoCallInline
+                roomId={roomId || ''}
+                roomName={room.name}
+                onExpand={() => setIsVideoCallOpen(true)}
+              />
+            )}
           </Card>
         </div>
       </div>
@@ -736,9 +757,6 @@ const StudyRoom = () => {
         roomCode={room.room_code}
         roomName={room.name}
       />
-
-      {/* Focus Music Player */}
-      <FocusMusicPlayer />
     </div>
   );
 };
