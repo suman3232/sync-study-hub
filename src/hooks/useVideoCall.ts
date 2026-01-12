@@ -15,6 +15,7 @@ interface SignalingMessage {
   from: string;
   to: string;
   data: RTCSessionDescriptionInit | RTCIceCandidateInit;
+  isScreenShare?: boolean;
 }
 
 export const useVideoCall = (roomId: string) => {
@@ -22,14 +23,17 @@ export const useVideoCall = (roomId: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [participants, setParticipants] = useState<Map<string, Participant>>(new Map());
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
 
   const configuration: RTCConfiguration = {
     iceServers: [
@@ -211,6 +215,14 @@ export const useVideoCall = (roomId: string) => {
       setLocalStream(null);
     }
 
+    // Stop screen share
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+      setScreenStream(null);
+      setIsScreenSharing(false);
+    }
+
     // Close all peer connections
     peerConnections.current.forEach((pc) => pc.close());
     peerConnections.current.clear();
@@ -246,6 +258,57 @@ export const useVideoCall = (roomId: string) => {
     }
   }, []);
 
+  const toggleScreenShare = useCallback(async () => {
+    if (isScreenSharing) {
+      // Stop screen sharing
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
+        screenStreamRef.current = null;
+        setScreenStream(null);
+      }
+      setIsScreenSharing(false);
+
+      // Replace screen track with camera track in all peer connections
+      if (localStreamRef.current) {
+        const videoTrack = localStreamRef.current.getVideoTracks()[0];
+        peerConnections.current.forEach((pc) => {
+          const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+          if (sender && videoTrack) {
+            sender.replaceTrack(videoTrack);
+          }
+        });
+      }
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false,
+        });
+
+        screenStreamRef.current = stream;
+        setScreenStream(stream);
+        setIsScreenSharing(true);
+
+        // Replace camera track with screen track in all peer connections
+        const screenTrack = stream.getVideoTracks()[0];
+        peerConnections.current.forEach((pc) => {
+          const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(screenTrack);
+          }
+        });
+
+        // Handle when user stops sharing via browser UI
+        screenTrack.onended = () => {
+          toggleScreenShare();
+        };
+      } catch (err) {
+        console.error('Failed to start screen sharing:', err);
+        setError('Failed to start screen sharing');
+      }
+    }
+  }, [isScreenSharing]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -257,13 +320,16 @@ export const useVideoCall = (roomId: string) => {
     isConnected,
     isConnecting,
     localStream,
+    screenStream,
     participants,
     isMuted,
     isVideoOff,
+    isScreenSharing,
     error,
     startCall,
     endCall,
     toggleMute,
     toggleVideo,
+    toggleScreenShare,
   };
 };
