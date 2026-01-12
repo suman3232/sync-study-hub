@@ -6,16 +6,17 @@ interface Participant {
   id: string;
   name: string;
   stream?: MediaStream;
+  screenStream?: MediaStream;
   isMuted: boolean;
   isVideoOff: boolean;
+  isScreenSharing: boolean;
 }
 
 interface SignalingMessage {
-  type: 'offer' | 'answer' | 'ice-candidate';
+  type: 'offer' | 'answer' | 'ice-candidate' | 'screen-share-start' | 'screen-share-stop';
   from: string;
-  to: string;
-  data: RTCSessionDescriptionInit | RTCIceCandidateInit;
-  isScreenShare?: boolean;
+  to?: string;
+  data?: RTCSessionDescriptionInit | RTCIceCandidateInit;
 }
 
 export const useVideoCall = (roomId: string) => {
@@ -31,6 +32,7 @@ export const useVideoCall = (roomId: string) => {
   const [error, setError] = useState<string | null>(null);
 
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const screenPeerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -39,10 +41,38 @@ export const useVideoCall = (roomId: string) => {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
     ],
   };
 
+  // Send renegotiation offer to a peer
+  const sendRenegotiationOffer = useCallback(async (peerId: string, pc: RTCPeerConnection) => {
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'signaling',
+        payload: {
+          type: 'offer',
+          from: user?.id,
+          to: peerId,
+          data: offer,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to send renegotiation offer:', err);
+    }
+  }, [user?.id]);
+
   const createPeerConnection = useCallback((peerId: string) => {
+    // Check if connection already exists
+    const existingPc = peerConnections.current.get(peerId);
+    if (existingPc && existingPc.connectionState !== 'closed' && existingPc.connectionState !== 'failed') {
+      return existingPc;
+    }
+
     const pc = new RTCPeerConnection(configuration);
 
     pc.onicecandidate = (event) => {
@@ -61,6 +91,7 @@ export const useVideoCall = (roomId: string) => {
     };
 
     pc.ontrack = (event) => {
+      console.log('Received track from', peerId, event.track.kind);
       setParticipants((prev) => {
         const newMap = new Map(prev);
         const existing = newMap.get(peerId);
@@ -68,14 +99,24 @@ export const useVideoCall = (roomId: string) => {
           id: peerId,
           name: existing?.name || 'Participant',
           stream: event.streams[0],
+          screenStream: existing?.screenStream,
           isMuted: existing?.isMuted || false,
           isVideoOff: existing?.isVideoOff || false,
+          isScreenSharing: existing?.isScreenSharing || false,
         });
         return newMap;
       });
     };
 
+    pc.onnegotiationneeded = async () => {
+      // Handle renegotiation when tracks are added/removed
+      if (pc.signalingState === 'stable') {
+        await sendRenegotiationOffer(peerId, pc);
+      }
+    };
+
     pc.onconnectionstatechange = () => {
+      console.log('Connection state:', peerId, pc.connectionState);
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         peerConnections.current.delete(peerId);
         setParticipants((prev) => {
@@ -89,15 +130,40 @@ export const useVideoCall = (roomId: string) => {
     // Add local tracks
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
+        console.log('Adding local track:', track.kind);
         pc.addTrack(track, localStreamRef.current!);
+      });
+    }
+
+    // Add screen share tracks if active
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => {
+        console.log('Adding screen track:', track.kind);
+        pc.addTrack(track, screenStreamRef.current!);
       });
     }
 
     peerConnections.current.set(peerId, pc);
     return pc;
-  }, [user?.id]);
+  }, [user?.id, sendRenegotiationOffer]);
 
   const handleSignaling = useCallback(async (message: SignalingMessage) => {
+    if (message.type === 'screen-share-start' || message.type === 'screen-share-stop') {
+      // Handle screen share status updates
+      setParticipants((prev) => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(message.from);
+        if (existing) {
+          newMap.set(message.from, {
+            ...existing,
+            isScreenSharing: message.type === 'screen-share-start',
+          });
+        }
+        return newMap;
+      });
+      return;
+    }
+
     if (message.to !== user?.id) return;
 
     let pc = peerConnections.current.get(message.from);
@@ -106,7 +172,17 @@ export const useVideoCall = (roomId: string) => {
       if (!pc) {
         pc = createPeerConnection(message.from);
       }
-      await pc.setRemoteDescription(new RTCSessionDescription(message.data as RTCSessionDescriptionInit));
+      
+      // Handle offer collision (both sides creating offers)
+      if (pc.signalingState !== 'stable') {
+        await Promise.all([
+          pc.setLocalDescription({ type: 'rollback' }),
+          pc.setRemoteDescription(new RTCSessionDescription(message.data as RTCSessionDescriptionInit)),
+        ]);
+      } else {
+        await pc.setRemoteDescription(new RTCSessionDescription(message.data as RTCSessionDescriptionInit));
+      }
+      
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
@@ -121,12 +197,16 @@ export const useVideoCall = (roomId: string) => {
         },
       });
     } else if (message.type === 'answer') {
-      if (pc) {
+      if (pc && pc.signalingState === 'have-local-offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(message.data as RTCSessionDescriptionInit));
       }
     } else if (message.type === 'ice-candidate') {
-      if (pc) {
-        await pc.addIceCandidate(new RTCIceCandidate(message.data as RTCIceCandidateInit));
+      if (pc && message.data) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(message.data as RTCIceCandidateInit));
+        } catch (err) {
+          console.error('Failed to add ICE candidate:', err);
+        }
       }
     }
   }, [user?.id, createPeerConnection]);
@@ -158,9 +238,10 @@ export const useVideoCall = (roomId: string) => {
         .on('broadcast', { event: 'signaling' }, ({ payload }) => {
           handleSignaling(payload as SignalingMessage);
         })
-        .on('presence', { event: 'join' }, async ({ key, newPresences }) => {
+        .on('presence', { event: 'join' }, async ({ key }) => {
           // When someone joins, send them an offer
           if (key !== user.id) {
+            console.log('Peer joined:', key);
             const pc = createPeerConnection(key);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
@@ -178,6 +259,7 @@ export const useVideoCall = (roomId: string) => {
           }
         })
         .on('presence', { event: 'leave' }, ({ key }) => {
+          console.log('Peer left:', key);
           // Clean up when someone leaves
           const pc = peerConnections.current.get(key);
           if (pc) {
@@ -202,7 +284,7 @@ export const useVideoCall = (roomId: string) => {
       channelRef.current = channel;
     } catch (err) {
       console.error('Failed to start call:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start video call');
+      setError(err instanceof Error ? err.message : 'Failed to start video call. Please allow camera/microphone access.');
       setIsConnecting(false);
     }
   }, [user, roomId, handleSignaling, createPeerConnection]);
@@ -226,6 +308,9 @@ export const useVideoCall = (roomId: string) => {
     // Close all peer connections
     peerConnections.current.forEach((pc) => pc.close());
     peerConnections.current.clear();
+    
+    screenPeerConnections.current.forEach((pc) => pc.close());
+    screenPeerConnections.current.clear();
 
     // Unsubscribe from channel
     if (channelRef.current) {
@@ -263,25 +348,37 @@ export const useVideoCall = (roomId: string) => {
       // Stop screen sharing
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach((track) => track.stop());
+        
+        // Remove screen track from all peer connections
+        peerConnections.current.forEach((pc) => {
+          const senders = pc.getSenders();
+          senders.forEach((sender) => {
+            if (sender.track && screenStreamRef.current?.getTracks().includes(sender.track)) {
+              pc.removeTrack(sender);
+            }
+          });
+        });
+        
         screenStreamRef.current = null;
         setScreenStream(null);
       }
       setIsScreenSharing(false);
 
-      // Replace screen track with camera track in all peer connections
-      if (localStreamRef.current) {
-        const videoTrack = localStreamRef.current.getVideoTracks()[0];
-        peerConnections.current.forEach((pc) => {
-          const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-          if (sender && videoTrack) {
-            sender.replaceTrack(videoTrack);
-          }
-        });
-      }
+      // Notify others
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'signaling',
+        payload: {
+          type: 'screen-share-stop',
+          from: user?.id,
+        },
+      });
     } else {
       try {
         const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
+          video: {
+            cursor: 'always',
+          } as MediaTrackConstraints,
           audio: false,
         });
 
@@ -289,13 +386,20 @@ export const useVideoCall = (roomId: string) => {
         setScreenStream(stream);
         setIsScreenSharing(true);
 
-        // Replace camera track with screen track in all peer connections
+        // Add screen track to all peer connections
         const screenTrack = stream.getVideoTracks()[0];
         peerConnections.current.forEach((pc) => {
-          const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-          if (sender) {
-            sender.replaceTrack(screenTrack);
-          }
+          pc.addTrack(screenTrack, stream);
+        });
+
+        // Notify others
+        channelRef.current?.send({
+          type: 'broadcast',
+          event: 'signaling',
+          payload: {
+            type: 'screen-share-start',
+            from: user?.id,
+          },
         });
 
         // Handle when user stops sharing via browser UI
@@ -307,7 +411,7 @@ export const useVideoCall = (roomId: string) => {
         setError('Failed to start screen sharing');
       }
     }
-  }, [isScreenSharing]);
+  }, [isScreenSharing, user?.id]);
 
   // Cleanup on unmount
   useEffect(() => {
