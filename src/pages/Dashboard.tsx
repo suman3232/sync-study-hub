@@ -350,6 +350,16 @@ const Dashboard = () => {
               </form>
             </DialogContent>
           </Dialog>
+
+          <Button 
+            variant="secondary" 
+            size="lg" 
+            className="gap-2"
+            onClick={() => navigate('/discover')}
+          >
+            <Globe className="h-5 w-5" />
+            Discover Rooms
+          </Button>
         </div>
 
         {/* Rooms List */}

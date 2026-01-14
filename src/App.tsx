@@ -14,6 +14,7 @@ import StudyRoom from "./pages/StudyRoom";
 import JoinRoom from "./pages/JoinRoom";
 import Leaderboard from "./pages/Leaderboard";
 import Settings from "./pages/Settings";
+import Discover from "./pages/Discover";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -101,8 +102,16 @@ const AppRoutes = () => {
         path="/settings"
         element={
           <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/discover"
+        element={
+          <ProtectedRoute>
+            <Discover />
+          </ProtectedRoute>
         }
       />
       <Route path="/join/:code" element={<JoinRoom />} />
