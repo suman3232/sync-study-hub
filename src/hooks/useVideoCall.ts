@@ -375,10 +375,11 @@ export const useVideoCall = (roomId: string) => {
       });
     } else {
       try {
+        // Clear any previous error
+        setError(null);
+        
         const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            cursor: 'always',
-          } as MediaTrackConstraints,
+          video: true,
           audio: false,
         });
 
@@ -408,7 +409,14 @@ export const useVideoCall = (roomId: string) => {
         };
       } catch (err) {
         console.error('Failed to start screen sharing:', err);
-        setError('Failed to start screen sharing');
+        // User cancelled or browser timeout - don't show error for cancellation
+        if (err instanceof Error) {
+          if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+            // User cancelled the picker or timeout - silently ignore
+            return;
+          }
+        }
+        setError('Failed to start screen sharing. Please try again.');
       }
     }
   }, [isScreenSharing, user?.id]);
