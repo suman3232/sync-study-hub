@@ -6,6 +6,7 @@ import { useRoomTimer, useUpdateTimer } from '@/hooks/useRoomTimer';
 import { useRoomNotes, useUpdateNotes } from '@/hooks/useRoomNotes';
 import { useRoomChat, useSendMessage } from '@/hooks/useRoomChat';
 import { useCompletePomodoro } from '@/hooks/useProfile';
+import { useCheckAndAwardAchievements } from '@/hooks/useAchievements';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,6 +70,7 @@ const StudyRoom = () => {
   const sendMessage = useSendMessage();
   const updateStatus = useUpdateMemberStatus();
   const completePomodoro = useCompletePomodoro();
+  const checkAchievements = useCheckAndAwardAchievements();
   const leaveRoom = useLeaveRoom();
   const updateRoom = useUpdateRoom();
 
@@ -174,6 +176,18 @@ const StudyRoom = () => {
         roomId,
         duration: room.timer_duration,
       });
+
+      // Check for new achievements
+      const newAchievements = await checkAchievements.mutateAsync();
+      
+      if (newAchievements && newAchievements.length > 0) {
+        newAchievements.forEach(achievement => {
+          toast({
+            title: `🏆 Achievement Unlocked!`,
+            description: `${achievement.name} - +${achievement.xp_reward} XP`,
+          });
+        });
+      }
 
       showNotification('🎉 Pomodoro Complete!', 'Great work! Take a well-deserved break.');
       

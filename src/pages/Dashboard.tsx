@@ -136,8 +136,11 @@ const Dashboard = () => {
           
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={() => navigate('/leaderboard')}>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/achievements')}>
               <Trophy className="h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/leaderboard')}>
+              <TrendingUp className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
               <Settings className="h-5 w-5" />
