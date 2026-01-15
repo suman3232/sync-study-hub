@@ -2,6 +2,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+export const ROOM_CATEGORIES = [
+  { value: 'general', label: 'General', icon: 'BookOpen' },
+  { value: 'exam-prep', label: 'Exam Prep', icon: 'GraduationCap' },
+  { value: 'coding', label: 'Coding', icon: 'Code' },
+  { value: 'reading', label: 'Reading', icon: 'BookMarked' },
+  { value: 'writing', label: 'Writing', icon: 'PenTool' },
+  { value: 'languages', label: 'Languages', icon: 'Languages' },
+  { value: 'math', label: 'Math', icon: 'Calculator' },
+  { value: 'creative', label: 'Creative', icon: 'Palette' },
+] as const;
+
+export type RoomCategory = typeof ROOM_CATEGORIES[number]['value'];
+
 export interface StudyRoom {
   id: string;
   name: string;
@@ -12,6 +25,7 @@ export interface StudyRoom {
   is_private: boolean;
   timer_duration: number;
   break_duration: number;
+  category: RoomCategory;
   created_at: string;
   updated_at: string;
   member_count?: number;
@@ -119,7 +133,7 @@ export const useCreateRoom = () => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ name, description, isPrivate }: { name: string; description?: string; isPrivate?: boolean }) => {
+    mutationFn: async ({ name, description, isPrivate, category }: { name: string; description?: string; isPrivate?: boolean; category?: RoomCategory }) => {
       if (!user) throw new Error('No user');
 
       // Generate a room code
@@ -137,6 +151,7 @@ export const useCreateRoom = () => {
           room_code: roomCode,
           created_by: user.id,
           is_private: isPrivate ?? false,
+          category: category ?? 'general',
         })
         .select()
         .single();
