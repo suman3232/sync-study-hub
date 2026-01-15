@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import { useMyRooms, useCreateRoom, useJoinRoom, useRoomByCode } from '@/hooks/useStudyRooms';
+import { useMyRooms, useCreateRoom, useJoinRoom, useRoomByCode, ROOM_CATEGORIES, RoomCategory } from '@/hooks/useStudyRooms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,9 +25,17 @@ import {
   Sparkles,
   BarChart3,
   Lock,
-  Globe
+  Globe,
+  GraduationCap,
+  Code,
+  BookMarked,
+  PenTool,
+  Languages,
+  Calculator,
+  Palette
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
@@ -46,8 +54,20 @@ const Dashboard = () => {
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [isPrivateRoom, setIsPrivateRoom] = useState(false);
+  const [newRoomCategory, setNewRoomCategory] = useState<RoomCategory>('general');
   const [joinCode, setJoinCode] = useState('');
   const [showAnalytics, setShowAnalytics] = useState(false);
+
+  const categoryIcons: Record<string, React.ReactNode> = {
+    BookOpen: <BookOpen className="h-4 w-4" />,
+    GraduationCap: <GraduationCap className="h-4 w-4" />,
+    Code: <Code className="h-4 w-4" />,
+    BookMarked: <BookMarked className="h-4 w-4" />,
+    PenTool: <PenTool className="h-4 w-4" />,
+    Languages: <Languages className="h-4 w-4" />,
+    Calculator: <Calculator className="h-4 w-4" />,
+    Palette: <Palette className="h-4 w-4" />,
+  };
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +78,7 @@ const Dashboard = () => {
         name: newRoomName,
         description: newRoomDescription || undefined,
         isPrivate: isPrivateRoom,
+        category: newRoomCategory,
       });
       
       toast({
@@ -69,6 +90,7 @@ const Dashboard = () => {
       setNewRoomName('');
       setNewRoomDescription('');
       setIsPrivateRoom(false);
+      setNewRoomCategory('general');
       navigate(`/room/${room.id}`);
     } catch (error) {
       toast({
@@ -285,6 +307,24 @@ const Dashboard = () => {
                     onChange={(e) => setNewRoomDescription(e.target.value)}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="room-category">Category</Label>
+                  <Select value={newRoomCategory} onValueChange={(value) => setNewRoomCategory(value as RoomCategory)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROOM_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          <div className="flex items-center gap-2">
+                            {categoryIcons[cat.icon]}
+                            {cat.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
                   <div className="flex items-center gap-3">
                     {isPrivateRoom ? (
@@ -391,8 +431,14 @@ const Dashboard = () => {
                           {room.description || 'No description'}
                         </CardDescription>
                       </div>
-                      <div className="px-2 py-1 bg-secondary rounded text-xs font-mono">
-                        {room.room_code}
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="px-2 py-1 bg-secondary rounded text-xs font-mono">
+                          {room.room_code}
+                        </div>
+                        <Badge variant="outline" className="text-xs gap-1">
+                          {categoryIcons[ROOM_CATEGORIES.find(c => c.value === room.category)?.icon || 'BookOpen']}
+                          {ROOM_CATEGORIES.find(c => c.value === room.category)?.label || 'General'}
+                        </Badge>
                       </div>
                     </div>
                   </CardHeader>

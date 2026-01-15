@@ -238,6 +238,7 @@ export type Database = {
       study_rooms: {
         Row: {
           break_duration: number | null
+          category: string | null
           created_at: string | null
           created_by: string
           description: string | null
@@ -251,6 +252,7 @@ export type Database = {
         }
         Insert: {
           break_duration?: number | null
+          category?: string | null
           created_at?: string | null
           created_by: string
           description?: string | null
@@ -264,6 +266,7 @@ export type Database = {
         }
         Update: {
           break_duration?: number | null
+          category?: string | null
           created_at?: string | null
           created_by?: string
           description?: string | null
