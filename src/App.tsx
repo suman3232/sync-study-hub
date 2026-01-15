@@ -15,6 +15,7 @@ import JoinRoom from "./pages/JoinRoom";
 import Leaderboard from "./pages/Leaderboard";
 import Settings from "./pages/Settings";
 import Discover from "./pages/Discover";
+import Achievements from "./pages/Achievements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -111,6 +112,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Discover />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/achievements"
+        element={
+          <ProtectedRoute>
+            <Achievements />
           </ProtectedRoute>
         }
       />
