@@ -199,71 +199,70 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Stats Grid + Daily Challenges */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 gap-4">
-            <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Clock className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Study Time</p>
-                    <p className="text-2xl font-bold">
-                      {formatStudyTime(profile?.total_study_time || 0)}
-                    </p>
-                  </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Clock className="h-4 w-4 text-primary" />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="animate-fade-in" style={{ animationDelay: '0.15s' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-success/10">
-                    <Timer className="h-5 w-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pomodoros</p>
-                    <p className="text-2xl font-bold">{profile?.pomodoro_count || 0}</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Study Time</p>
+                  <p className="text-lg font-bold">
+                    {formatStudyTime(profile?.total_study_time || 0)}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-accent/10">
-                    <Flame className="h-5 w-5 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current Streak</p>
-                    <p className="text-2xl font-bold">{profile?.current_streak || 0} days</p>
-                  </div>
+          <Card className="animate-fade-in" style={{ animationDelay: '0.15s' }}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-success/10">
+                  <Timer className="h-4 w-4 text-success" />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="animate-fade-in" style={{ animationDelay: '0.25s' }}>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-secondary">
-                    <TrendingUp className="h-5 w-5 text-secondary-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Best Streak</p>
-                    <p className="text-2xl font-bold">{profile?.longest_streak || 0} days</p>
-                  </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Pomodoros</p>
+                  <p className="text-lg font-bold">{profile?.pomodoro_count || 0}</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="animate-fade-in" style={{ animationDelay: '0.28s' }}>
-            <DailyChallenges />
-          </div>
+          <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-accent/10">
+                  <Flame className="h-4 w-4 text-accent" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Current Streak</p>
+                  <p className="text-lg font-bold">{profile?.current_streak || 0} days</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="animate-fade-in" style={{ animationDelay: '0.25s' }}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-secondary">
+                  <TrendingUp className="h-4 w-4 text-secondary-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Best Streak</p>
+                  <p className="text-lg font-bold">{profile?.longest_streak || 0} days</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Daily Challenges */}
+        <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.28s' }}>
+          <DailyChallenges />
         </div>
 
         {/* Analytics Toggle */}
@@ -496,6 +495,77 @@ const Dashboard = () => {
           )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t bg-card/50 mt-auto">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span className="font-display font-bold text-lg">SyncStudy</span>
+              </div>
+              <p className="text-sm text-muted-foreground max-w-md">
+                A collaborative study platform designed to help you stay focused, 
+                track your progress, and achieve your learning goals with friends.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-3 text-sm">Features</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Timer className="h-3 w-3" /> Pomodoro Timer
+                </li>
+                <li className="flex items-center gap-2">
+                  <Users className="h-3 w-3" /> Study Rooms
+                </li>
+                <li className="flex items-center gap-2">
+                  <Trophy className="h-3 w-3" /> Achievements
+                </li>
+                <li className="flex items-center gap-2">
+                  <Flame className="h-3 w-3" /> Daily Challenges
+                </li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-3 text-sm">Quick Links</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <button onClick={() => navigate('/discover')} className="hover:text-primary transition-colors">
+                    Discover Rooms
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => navigate('/achievements')} className="hover:text-primary transition-colors">
+                    Achievements
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => navigate('/leaderboard')} className="hover:text-primary transition-colors">
+                    Leaderboard
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => navigate('/settings')} className="hover:text-primary transition-colors">
+                    Settings
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} SyncStudy. Stay focused, study together.
+            </p>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span>Made with ❤️ for learners</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
