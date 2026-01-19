@@ -227,15 +227,30 @@ export const useJoinRoom = () => {
     mutationFn: async (roomId: string) => {
       if (!user) throw new Error('No user');
 
-      const { error } = await supabase
+      // Check if user is already a member
+      const { data: existingMembership } = await supabase
         .from('room_members')
-        .insert({
-          room_id: roomId,
-          user_id: user.id,
-          status: 'idle',
-        });
+        .select('id')
+        .eq('room_id', roomId)
+        .eq('user_id', user.id)
+        .single();
 
-      if (error && error.code !== '23505') throw error; // Ignore duplicate key error
+      // Only insert if not already a member
+      if (!existingMembership) {
+        const { error } = await supabase
+          .from('room_members')
+          .insert({
+            room_id: roomId,
+            user_id: user.id,
+            status: 'idle',
+          });
+
+        if (error && error.code !== '23505') throw error; // Ignore duplicate key error
+        
+        return { isNewJoin: true };
+      }
+      
+      return { isNewJoin: false };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-rooms'] });
