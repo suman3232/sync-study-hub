@@ -8,6 +8,7 @@ import { useRoomChat, useSendMessage } from '@/hooks/useRoomChat';
 import { useCompletePomodoro } from '@/hooks/useProfile';
 import { useCheckAndAwardAchievements } from '@/hooks/useAchievements';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useDailyChallenges } from '@/hooks/useDailyChallenges';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -73,6 +74,7 @@ const StudyRoom = () => {
   const checkAchievements = useCheckAndAwardAchievements();
   const leaveRoom = useLeaveRoom();
   const updateRoom = useUpdateRoom();
+  const { updateChallengeProgress } = useDailyChallenges();
 
   const [localTimeRemaining, setLocalTimeRemaining] = useState(1500);
   const [notesContent, setNotesContent] = useState('');
@@ -176,6 +178,10 @@ const StudyRoom = () => {
         roomId,
         duration: room.timer_duration,
       });
+
+      // Update daily challenge progress
+      await updateChallengeProgress('pomodoros', 1);
+      await updateChallengeProgress('study_time', room.timer_duration);
 
       // Check for new achievements
       const newAchievements = await checkAchievements.mutateAsync();

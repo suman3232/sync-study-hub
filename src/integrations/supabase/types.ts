@@ -50,6 +50,36 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_challenges: {
+        Row: {
+          challenge_type: string
+          created_at: string | null
+          description: string
+          id: string
+          name: string
+          target_value: number
+          xp_reward: number
+        }
+        Insert: {
+          challenge_type: string
+          created_at?: string | null
+          description: string
+          id?: string
+          name: string
+          target_value: number
+          xp_reward?: number
+        }
+        Update: {
+          challenge_type?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          name?: string
+          target_value?: number
+          xp_reward?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -337,6 +367,47 @@ export type Database = {
             columns: ["achievement_id"]
             isOneToOne: false
             referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_daily_progress: {
+        Row: {
+          challenge_date: string
+          challenge_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string | null
+          current_value: number
+          id: string
+          user_id: string
+        }
+        Insert: {
+          challenge_date?: string
+          challenge_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string | null
+          current_value?: number
+          id?: string
+          user_id: string
+        }
+        Update: {
+          challenge_date?: string
+          challenge_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string | null
+          current_value?: number
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_daily_progress_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "daily_challenges"
             referencedColumns: ["id"]
           },
         ]

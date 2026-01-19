@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import StudyAnalytics from '@/components/StudyAnalytics';
+import { DailyChallenges } from '@/components/DailyChallenges';
+import { useDailyChallenges } from '@/hooks/useDailyChallenges';
 import ThemeToggle from '@/components/ThemeToggle';
 import { 
   BookOpen, 
@@ -48,6 +50,7 @@ const Dashboard = () => {
   const joinRoom = useJoinRoom();
   const findRoomByCode = useRoomByCode();
   const { toast } = useToast();
+  const { updateChallengeProgress } = useDailyChallenges();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
@@ -107,7 +110,12 @@ const Dashboard = () => {
 
     try {
       const room = await findRoomByCode.mutateAsync(joinCode);
-      await joinRoom.mutateAsync(room.id);
+      const result = await joinRoom.mutateAsync(room.id);
+      
+      // Update daily challenge progress if this is a new join
+      if (result?.isNewJoin) {
+        await updateChallengeProgress('rooms_joined', 1);
+      }
       
       toast({
         title: 'Joined Room!',
@@ -191,65 +199,71 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Clock className="h-5 w-5 text-primary" />
+        {/* Stats Grid + Daily Challenges */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-2 gap-4">
+            <Card className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Clock className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Study Time</p>
+                    <p className="text-2xl font-bold">
+                      {formatStudyTime(profile?.total_study_time || 0)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Study Time</p>
-                  <p className="text-2xl font-bold">
-                    {formatStudyTime(profile?.total_study_time || 0)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="animate-fade-in" style={{ animationDelay: '0.15s' }}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-success/10">
-                  <Timer className="h-5 w-5 text-success" />
+            <Card className="animate-fade-in" style={{ animationDelay: '0.15s' }}>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-success/10">
+                    <Timer className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pomodoros</p>
+                    <p className="text-2xl font-bold">{profile?.pomodoro_count || 0}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Pomodoros</p>
-                  <p className="text-2xl font-bold">{profile?.pomodoro_count || 0}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-accent/10">
-                  <Flame className="h-5 w-5 text-accent" />
+            <Card className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-accent/10">
+                    <Flame className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Streak</p>
+                    <p className="text-2xl font-bold">{profile?.current_streak || 0} days</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Current Streak</p>
-                  <p className="text-2xl font-bold">{profile?.current_streak || 0} days</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="animate-fade-in" style={{ animationDelay: '0.25s' }}>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-secondary">
-                  <TrendingUp className="h-5 w-5 text-secondary-foreground" />
+            <Card className="animate-fade-in" style={{ animationDelay: '0.25s' }}>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-secondary">
+                    <TrendingUp className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Best Streak</p>
+                    <p className="text-2xl font-bold">{profile?.longest_streak || 0} days</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Best Streak</p>
-                  <p className="text-2xl font-bold">{profile?.longest_streak || 0} days</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="animate-fade-in" style={{ animationDelay: '0.28s' }}>
+            <DailyChallenges />
+          </div>
         </div>
 
         {/* Analytics Toggle */}
