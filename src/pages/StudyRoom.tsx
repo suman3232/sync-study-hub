@@ -24,7 +24,9 @@ import RoomSettingsModal from '@/components/RoomSettingsModal';
 import ShareRoomModal from '@/components/ShareRoomModal';
 import InlineFocusMusic from '@/components/InlineFocusMusic';
 import ThemeToggle from '@/components/ThemeToggle';
+import { LiveActivityIndicator, StatusDot } from '@/components/LiveActivityIndicator';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { playTimerSound, showNotification, requestNotificationPermission } from '@/utils/notifications';
 import { 
@@ -706,35 +708,61 @@ const StudyRoom = () => {
             {activeTab === 'participants' && (
               <>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">
-                    Participants ({members?.length || 0})
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    Participants
+                    <Badge variant="secondary" className="font-normal">
+                      {members?.length || 0}
+                    </Badge>
+                    {members?.some(m => m.status === 'studying') && (
+                      <span className="text-xs text-muted-foreground font-normal ml-auto flex items-center gap-1">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                        </span>
+                        {members.filter(m => m.status === 'studying').length} studying
+                      </span>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {members?.map((member) => (
-                      <div key={member.id} className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={member.profile?.avatar_url || undefined} />
-                          <AvatarFallback className="bg-primary text-primary-foreground">
-                            {member.profile?.full_name?.charAt(0) || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="font-medium">
-                            {member.profile?.full_name || 'Anonymous'}
-                            {member.user_id === user?.id && (
-                              <span className="text-muted-foreground text-sm ml-2">(you)</span>
-                            )}
-                          </p>
+                    {/* Sort members: studying first, then break, then idle */}
+                    {members
+                      ?.slice()
+                      .sort((a, b) => {
+                        const order = { studying: 0, break: 1, idle: 2 };
+                        return order[a.status] - order[b.status];
+                      })
+                      .map((member) => (
+                        <div 
+                          key={member.id} 
+                          className={cn(
+                            "flex items-center gap-3 p-2 rounded-lg transition-all duration-300",
+                            member.status === 'studying' && "bg-primary/5 border border-primary/10",
+                            member.status === 'break' && "bg-success/5 border border-success/10",
+                            member.status === 'idle' && "bg-muted/50"
+                          )}
+                        >
+                          <div className="relative">
+                            <Avatar>
+                              <AvatarImage src={member.profile?.avatar_url || undefined} />
+                              <AvatarFallback className="bg-primary text-primary-foreground">
+                                {member.profile?.full_name?.charAt(0) || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <StatusDot status={member.status} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">
+                              {member.profile?.full_name || 'Anonymous'}
+                              {member.user_id === user?.id && (
+                                <span className="text-muted-foreground text-sm ml-2">(you)</span>
+                              )}
+                            </p>
+                          </div>
+                          <LiveActivityIndicator status={member.status} size="sm" />
                         </div>
-                        <Badge className={getStatusColor(member.status)}>
-                          {member.status === 'studying' && '📚 Studying'}
-                          {member.status === 'break' && '☕ Break'}
-                          {member.status === 'idle' && '💤 Idle'}
-                        </Badge>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </CardContent>
               </>
