@@ -23,6 +23,7 @@ import VideoCallInline from '@/components/VideoCallInline';
 import RoomSettingsModal from '@/components/RoomSettingsModal';
 import ShareRoomModal from '@/components/ShareRoomModal';
 import InlineFocusMusic from '@/components/InlineFocusMusic';
+import RoomDocuments from '@/components/RoomDocuments';
 import ThemeToggle from '@/components/ThemeToggle';
 import { LiveActivityIndicator, StatusDot } from '@/components/LiveActivityIndicator';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,7 +46,8 @@ import {
   LogOut,
   MoreVertical,
   Share2,
-  Keyboard
+  Keyboard,
+  FolderOpen
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -81,7 +83,7 @@ const StudyRoom = () => {
   const [localTimeRemaining, setLocalTimeRemaining] = useState(1500);
   const [notesContent, setNotesContent] = useState('');
   const [chatMessage, setChatMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'notes' | 'chat' | 'participants' | 'video'>('notes');
+  const [activeTab, setActiveTab] = useState<'notes' | 'documents' | 'chat' | 'participants' | 'video'>('notes');
   const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -594,7 +596,7 @@ const StudyRoom = () => {
         {/* Right Panel */}
         <div className="lg:w-1/2 flex flex-col animate-slide-in-right">
           {/* Tab Navigation */}
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-4 flex-wrap">
             <Button
               variant={activeTab === 'notes' ? 'default' : 'ghost'}
               size="sm"
@@ -603,6 +605,15 @@ const StudyRoom = () => {
             >
               <FileText className="h-4 w-4" />
               Notes
+            </Button>
+            <Button
+              variant={activeTab === 'documents' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('documents')}
+              className="gap-2"
+            >
+              <FolderOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Documents</span>
             </Button>
             <Button
               variant={activeTab === 'chat' ? 'default' : 'ghost'}
@@ -650,6 +661,17 @@ const StudyRoom = () => {
                     onChange={(e) => handleNotesChange(e.target.value)}
                     className="h-full min-h-[300px] resize-none"
                   />
+                </CardContent>
+              </>
+            )}
+
+            {activeTab === 'documents' && (
+              <>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Shared Documents</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 pb-4">
+                  <RoomDocuments roomId={roomId || ''} />
                 </CardContent>
               </>
             )}
