@@ -13,7 +13,7 @@ import {
   Trash2, 
   Download,
   Loader2,
-  X
+  Eye
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import DocumentPreviewModal from './DocumentPreviewModal';
 
 interface RoomDocumentsProps {
   roomId: string;
@@ -49,10 +50,18 @@ const RoomDocuments = ({ roomId }: RoomDocumentsProps) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteTarget, setDeleteTarget] = useState<RoomDocument | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<RoomDocument | null>(null);
 
   const { data: documents, isLoading } = useRoomDocuments(roomId);
   const uploadDocument = useUploadDocument();
   const deleteDocument = useDeleteDocument();
+
+  const canPreview = (fileType: string) => {
+    return (
+      fileType.startsWith('image/') ||
+      fileType === 'application/pdf'
+    );
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -166,6 +175,17 @@ const RoomDocuments = ({ roomId }: RoomDocumentsProps) => {
                     </p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {canPreview(doc.file_type) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setPreviewDoc(doc)}
+                        title="Preview"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -217,6 +237,17 @@ const RoomDocuments = ({ roomId }: RoomDocumentsProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <DocumentPreviewModal
+          isOpen={!!previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          fileUrl={previewDoc.file_url}
+          fileName={previewDoc.file_name}
+          fileType={previewDoc.file_type}
+        />
+      )}
     </div>
   );
 };
