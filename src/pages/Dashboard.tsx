@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import StudyAnalytics from '@/components/StudyAnalytics';
 import { DailyChallenges } from '@/components/DailyChallenges';
+import { WeeklyChallenges } from '@/components/WeeklyChallenges';
 import { useDailyChallenges } from '@/hooks/useDailyChallenges';
 import ThemeToggle from '@/components/ThemeToggle';
 import Footer from '@/components/Footer';
@@ -261,9 +262,14 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Daily Challenges */}
-        <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.28s' }}>
-          <DailyChallenges />
+        {/* Challenges Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="animate-fade-in" style={{ animationDelay: '0.28s' }}>
+            <DailyChallenges />
+          </div>
+          <div className="animate-fade-in" style={{ animationDelay: '0.32s' }}>
+            <WeeklyChallenges />
+          </div>
         </div>
 
         {/* Analytics Toggle */}
