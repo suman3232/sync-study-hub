@@ -471,6 +471,77 @@ export type Database = {
         }
         Relationships: []
       }
+      user_weekly_progress: {
+        Row: {
+          challenge_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string | null
+          current_value: number
+          id: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          challenge_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string | null
+          current_value?: number
+          id?: string
+          user_id: string
+          week_start?: string
+        }
+        Update: {
+          challenge_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string | null
+          current_value?: number
+          id?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_weekly_progress_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_challenges: {
+        Row: {
+          challenge_type: string
+          created_at: string | null
+          description: string
+          id: string
+          name: string
+          target_value: number
+          xp_reward: number
+        }
+        Insert: {
+          challenge_type: string
+          created_at?: string | null
+          description: string
+          id?: string
+          name: string
+          target_value: number
+          xp_reward?: number
+        }
+        Update: {
+          challenge_type?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          name?: string
+          target_value?: number
+          xp_reward?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
