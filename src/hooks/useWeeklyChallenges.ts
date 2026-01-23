@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { notifyChallengeComplete } from '@/utils/notifications';
 
 interface WeeklyChallenge {
   id: string;
@@ -144,6 +145,9 @@ export const useWeeklyChallenges = () => {
       queryClient.invalidateQueries({ queryKey: ['weekly-challenges'] });
       
       if (result.isNowCompleted && !result.wasAlreadyCompleted) {
+        // Show browser push notification with sound
+        notifyChallengeComplete(result.challenge.name, result.challenge.xp_reward, true);
+        
         toast({
           title: '🏆 Weekly Challenge Complete!',
           description: `Amazing! You earned ${result.challenge.xp_reward} XP for completing "${result.challenge.name}"`,

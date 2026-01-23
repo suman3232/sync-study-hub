@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { notifyChallengeComplete } from '@/utils/notifications';
 
 interface DailyChallenge {
   id: string;
@@ -129,6 +130,9 @@ export const useDailyChallenges = () => {
       queryClient.invalidateQueries({ queryKey: ['daily-challenges'] });
       
       if (result.isNowCompleted && !result.wasAlreadyCompleted) {
+        // Show browser push notification with sound
+        notifyChallengeComplete(result.challenge.name, result.challenge.xp_reward, false);
+        
         toast({
           title: '🎉 Challenge Complete!',
           description: `You earned ${result.challenge.xp_reward} XP for completing "${result.challenge.name}"`,

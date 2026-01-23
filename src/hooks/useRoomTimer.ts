@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { notifyRoomActivity } from '@/utils/notifications';
 
 export interface TimerState {
   id: string;
@@ -17,6 +18,8 @@ export interface TimerState {
 
 export const useRoomTimer = (roomId: string | undefined) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const previousTimerState = useRef<TimerState | null>(null);
 
   const query = useQuery({
     queryKey: ['room-timer', roomId],
@@ -35,9 +38,9 @@ export const useRoomTimer = (roomId: string | undefined) => {
     enabled: !!roomId,
   });
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates with notifications
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !user) return;
 
     const channel = supabase
       .channel(`timer-${roomId}`)
@@ -49,8 +52,30 @@ export const useRoomTimer = (roomId: string | undefined) => {
           table: 'room_timer_state',
           filter: `room_id=eq.${roomId}`,
         },
-        (payload) => {
-          queryClient.setQueryData(['room-timer', roomId], payload.new as TimerState);
+        async (payload) => {
+          const newState = payload.new as TimerState;
+          const prevState = previousTimerState.current;
+          
+          queryClient.setQueryData(['room-timer', roomId], newState);
+          
+          // Notify when someone else starts the timer
+          if (
+            newState.is_running && 
+            !prevState?.is_running && 
+            newState.last_action_by !== user.id
+          ) {
+            // Fetch the user who started the timer
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('user_id', newState.last_action_by)
+              .single();
+            
+            const userName = profile?.full_name || 'Someone';
+            notifyRoomActivity('timer_started', `${userName} started the timer`);
+          }
+          
+          previousTimerState.current = newState;
         }
       )
       .subscribe();
@@ -58,7 +83,14 @@ export const useRoomTimer = (roomId: string | undefined) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, queryClient]);
+  }, [roomId, queryClient, user]);
+
+  // Keep track of previous state
+  useEffect(() => {
+    if (query.data) {
+      previousTimerState.current = query.data;
+    }
+  }, [query.data]);
 
   return query;
 };
