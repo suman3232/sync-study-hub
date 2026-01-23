@@ -29,7 +29,12 @@ import { LiveActivityIndicator, StatusDot } from '@/components/LiveActivityIndic
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
-import { playTimerSound, showNotification, requestNotificationPermission } from '@/utils/notifications';
+import { 
+  notifyTimerComplete, 
+  notifyAchievementUnlocked, 
+  notifyRoomActivity,
+  requestNotificationPermission 
+} from '@/utils/notifications';
 import { 
   ArrowLeft, 
   Play, 
@@ -99,16 +104,53 @@ const StudyRoom = () => {
     requestNotificationPermission();
   }, []);
 
-  // Subscribe to realtime member updates
+  // Subscribe to realtime member updates with notifications
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !user) return;
 
     const channel = supabase
       .channel(`members-${roomId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'room_members',
+          filter: `room_id=eq.${roomId}`,
+        },
+        async (payload) => {
+          queryClient.invalidateQueries({ queryKey: ['room-members', roomId] });
+          
+          // Notify about new members (except self)
+          if (payload.new && (payload.new as any).user_id !== user.id) {
+            // Fetch the new member's profile
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('user_id', (payload.new as any).user_id)
+              .single();
+            
+            const memberName = profile?.full_name || 'Someone';
+            notifyRoomActivity('member_joined', `${memberName} joined the room`);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'room_members',
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['room-members', roomId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'room_members',
           filter: `room_id=eq.${roomId}`,
@@ -122,7 +164,7 @@ const StudyRoom = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId, queryClient]);
+  }, [roomId, queryClient, user]);
 
   // Sync local timer with server state
   useEffect(() => {
@@ -173,8 +215,8 @@ const StudyRoom = () => {
 
     const isBreak = timer?.is_break || false;
     
-    // Play sound and show notification
-    playTimerSound();
+    // Play sound and show browser notification
+    notifyTimerComplete(isBreak);
     
     if (!isBreak) {
       // Completed a study session
@@ -192,22 +234,21 @@ const StudyRoom = () => {
       
       if (newAchievements && newAchievements.length > 0) {
         newAchievements.forEach(achievement => {
+          // Browser push notification for achievement
+          notifyAchievementUnlocked(achievement.name, achievement.xp_reward);
+          
           toast({
             title: `🏆 Achievement Unlocked!`,
             description: `${achievement.name} - +${achievement.xp_reward} XP`,
           });
         });
       }
-
-      showNotification('🎉 Pomodoro Complete!', 'Great work! Take a well-deserved break.');
       
       toast({
         title: '🎉 Pomodoro complete!',
         description: 'Take a well-deserved break.',
       });
     } else {
-      showNotification('⚡ Break Over!', 'Time to get back to studying!');
-      
       toast({
         title: '⚡ Break over!',
         description: 'Time to focus!',
