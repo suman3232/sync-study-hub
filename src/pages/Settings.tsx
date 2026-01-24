@@ -7,9 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import AvatarUpload from '@/components/AvatarUpload';
-import { ArrowLeft, Save, LogOut, User } from 'lucide-react';
+import NotificationSettings from '@/components/NotificationSettings';
+import { ArrowLeft, Save, LogOut, User, Bell } from 'lucide-react';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -77,99 +79,116 @@ const Settings = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="space-y-6">
-          {/* Profile Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Profile
-              </CardTitle>
-              <CardDescription>
-                Update your personal information and study goals
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Avatar Upload */}
-              <AvatarUpload
-                currentAvatarUrl={avatarUrl}
-                fullName={fullName}
-                email={user?.email || null}
-                onUploadComplete={(url) => setAvatarUrl(url)}
-              />
+        <Tabs defaultValue="profile" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="profile" className="gap-2">
+              <User className="h-4 w-4" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+          </TabsList>
 
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="full-name">Full Name</Label>
-                <Input
-                  id="full-name"
-                  placeholder="Your name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+          <TabsContent value="profile" className="space-y-6">
+            {/* Profile Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Profile
+                </CardTitle>
+                <CardDescription>
+                  Update your personal information and study goals
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Avatar Upload */}
+                <AvatarUpload
+                  currentAvatarUrl={avatarUrl}
+                  fullName={fullName}
+                  email={user?.email || null}
+                  onUploadComplete={(url) => setAvatarUrl(url)}
                 />
-              </div>
 
-              {/* Email (read-only) */}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Email cannot be changed
-                </p>
-              </div>
+                {/* Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="full-name">Full Name</Label>
+                  <Input
+                    id="full-name"
+                    placeholder="Your name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
 
-              {/* Study Goal */}
-              <div className="space-y-2">
-                <Label htmlFor="study-goal">Study Goal</Label>
-                <Textarea
-                  id="study-goal"
-                  placeholder="e.g., Pass my calculus exam, Learn web development"
-                  value={studyGoal}
-                  onChange={(e) => setStudyGoal(e.target.value)}
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This will be displayed on your dashboard
-                </p>
-              </div>
+                {/* Email (read-only) */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    value={user?.email || ''}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Email cannot be changed
+                  </p>
+                </div>
 
-              <Button 
-                onClick={handleSave} 
-                className="w-full" 
-                variant="gradient"
-                disabled={updateProfile.isPending}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </CardContent>
-          </Card>
+                {/* Study Goal */}
+                <div className="space-y-2">
+                  <Label htmlFor="study-goal">Study Goal</Label>
+                  <Textarea
+                    id="study-goal"
+                    placeholder="e.g., Pass my calculus exam, Learn web development"
+                    value={studyGoal}
+                    onChange={(e) => setStudyGoal(e.target.value)}
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This will be displayed on your dashboard
+                  </p>
+                </div>
 
-          {/* Account Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
-              <CardDescription>
-                Sign out of your account
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                variant="destructive" 
-                onClick={handleSignOut}
-                className="w-full"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+                <Button 
+                  onClick={handleSave} 
+                  className="w-full" 
+                  variant="gradient"
+                  disabled={updateProfile.isPending}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Account Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardDescription>
+                  Sign out of your account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleSignOut}
+                  className="w-full"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <NotificationSettings />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

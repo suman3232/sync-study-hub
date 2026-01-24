@@ -1,5 +1,10 @@
+import { getNotificationSettings } from '@/hooks/useNotificationSettings';
+
 // Timer notification sound using Web Audio API
 export const playTimerSound = () => {
+  const settings = getNotificationSettings();
+  if (!settings.timerSound) return;
+  
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
@@ -35,6 +40,9 @@ export const playTimerSound = () => {
 
 // Achievement/challenge completion sound
 export const playChallengeSound = () => {
+  const settings = getNotificationSettings();
+  if (!settings.challengeSound) return;
+  
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
@@ -70,6 +78,9 @@ export const playChallengeSound = () => {
 
 // Subtle notification sound for room activity
 export const playActivitySound = () => {
+  const settings = getNotificationSettings();
+  if (!settings.activitySound) return;
+  
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
@@ -149,12 +160,16 @@ export const showNotification = (
 
 // Notification helper functions for specific events
 export const notifyTimerComplete = (isBreak: boolean) => {
+  const settings = getNotificationSettings();
+  
   if (isBreak) {
+    if (!settings.breakComplete) return;
     showNotification('⚡ Break Over!', 'Time to get back to studying!', { 
       playSound: 'timer',
       tag: 'timer-event'
     });
   } else {
+    if (!settings.timerComplete) return;
     showNotification('🎉 Pomodoro Complete!', 'Great work! Take a well-deserved break.', { 
       playSound: 'timer',
       tag: 'timer-event'
@@ -163,6 +178,11 @@ export const notifyTimerComplete = (isBreak: boolean) => {
 };
 
 export const notifyChallengeComplete = (challengeName: string, xpReward: number, isWeekly: boolean = false) => {
+  const settings = getNotificationSettings();
+  
+  if (isWeekly && !settings.weeklyChallengeComplete) return;
+  if (!isWeekly && !settings.dailyChallengeComplete) return;
+  
   const emoji = isWeekly ? '🏆' : '🎯';
   const type = isWeekly ? 'Weekly' : 'Daily';
   showNotification(
@@ -173,6 +193,9 @@ export const notifyChallengeComplete = (challengeName: string, xpReward: number,
 };
 
 export const notifyAchievementUnlocked = (achievementName: string, xpReward: number) => {
+  const settings = getNotificationSettings();
+  if (!settings.achievementUnlocked) return;
+  
   showNotification(
     '🏅 Achievement Unlocked!',
     `${achievementName} - +${xpReward} XP`,
@@ -181,6 +204,13 @@ export const notifyAchievementUnlocked = (achievementName: string, xpReward: num
 };
 
 export const notifyRoomActivity = (type: 'member_joined' | 'member_left' | 'new_message' | 'timer_started', details: string) => {
+  const settings = getNotificationSettings();
+  
+  // Check individual settings for each type
+  if (type === 'member_joined' && !settings.memberJoined) return;
+  if (type === 'member_left' && !settings.memberLeft) return;
+  if (type === 'timer_started' && !settings.timerStartedByOthers) return;
+  
   const titles: Record<typeof type, string> = {
     member_joined: '👋 New Member!',
     member_left: '👋 Member Left',
